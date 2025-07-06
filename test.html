@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>GovMap XYZ</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body>
+  <div id="map" style="height: 100vh;"></div>
+  <script>
+    var map = L.map('map').setView([31.7683, 35.2137], 10); // Jerusalem center
+
+    var govmapLayer = L.tileLayer('https://cdnil.govmap.gov.il/xyz/heb/{z}/{x}/{y}.png', {
+      attribution: '&copy; GovMap',
+      maxZoom: 18,
+      tileSize: 256,
+    });
+
+    govmapLayer.addTo(map);
+  </script>
+</body>
+</html>
