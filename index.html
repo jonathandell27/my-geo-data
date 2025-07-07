@@ -85,7 +85,7 @@
 
       // Filter features based on parameters
       let filteredFeatures;
-      if (showAll || citycodeFilter === 'ALL' || citycodeFilter === '') {
+      if (showAll || citycodeFilter === 'All' || citycodeFilter === '') {
         filteredFeatures = data.features;
       } else {
         filteredFeatures = data.features.filter(feature => feature.properties.citycode == citycodeFilter);
