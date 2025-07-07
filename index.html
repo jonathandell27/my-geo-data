@@ -110,7 +110,7 @@
       // Process each layer
       layers.forEach(({ layerName, data }) => {
         let filteredFeatures;
-        if (showAll || citycodeFilter === 'ALL' || citycodeFilter === '') {
+        if (showAll || citycodeFilter === 'null' || citycodeFilter === '') {
           filteredFeatures = data.features;
         } else {
           // Filter based on citycode for israel_cities or setl_code for servies_city
