@@ -19,6 +19,12 @@
       margin: 0;
       padding: 0;
     }
+    .error-message {
+      background-color: #ffcccc;
+      padding: 10px;
+      border: 1px solid #ff0000;
+      border-radius: 5px;
+    }
   </style>
 </head>
 <body>
@@ -49,6 +55,26 @@
     return params.get(name);
   }
 
+  // Create a control for error messages
+  const errorControl = L.control({ position: 'topright' });
+  errorControl.onAdd = function (map) {
+    this._div = L.DomUtil.create('div', 'error-message');
+    this._div.style.display = 'none';
+    return this._div;
+  };
+  errorControl.addTo(map);
+
+  // Function to show error message
+  function showError(message) {
+    errorControl._div.innerHTML = message;
+    errorControl._div.style.display = 'block';
+  }
+
+  // Function to hide error message
+  function hideError() {
+    errorControl._div.style.display = 'none';
+  }
+
   // Fetch and display GeoJSON data
   fetch('https://jonathandell27.github.io/my-geo-data/israel_cities.geojson')
     .then(response => response.json())
@@ -61,42 +87,43 @@
         ? data.features
         : data.features.filter(feature => feature.properties.citycode == citycodeFilter);
 
-      // Add GeoJSON layer for points and polygons
-      L.geoJSON(filteredFeatures, {
-        onEachFeature: function (feature, layer) {
-          // Add popup with city name, citycode, and geometry type
-          const geometryType = feature.geometry.type === 'Point' ? 'נקודה' : 'פוליגון';
-          layer.bindPopup(
-            `<b>${feature.properties.name}</b><br>` +
-            `קוד עיר: ${feature.properties.citycode}<br>` +
-            `סוג: ${geometryType}`
-          );
-        },
-        pointToLayer: function (feature, latlng) {
-          // Style for point markers
-          return L.marker(latlng, {
-            icon: L.icon({
-              iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-              iconSize: [25, 41],
-              iconAnchor: [12, 41],
-              popupAnchor: [1, -34]
-            })
-          });
-        },
-        style: function (feature) {
-          // Style for polygons
-          if (feature.geometry.type === 'Polygon') {
-            return {
-              color: '#3388ff',
-              weight: 2,
-              fillOpacity: 0.2
-            };
-          }
-        }
-      }).addTo(map);
-
-      // Adjust map bounds to fit filtered features
+      // Check if there are features to display
       if (filteredFeatures.length > 0) {
+        // Add GeoJSON layer for points and polygons
+        L.geoJSON(filteredFeatures, {
+          onEachFeature: function (feature, layer) {
+            // Add popup with city name, citycode, and geometry type
+            const geometryType = feature.geometry.type === 'Point' ? 'נקודה' : 'פוליגון';
+            layer.bindPopup(
+              `<b>${feature.properties.name}</b><br>` +
+              `קוד עיר: ${feature.properties.citycode}<br>` +
+              `סוג: ${geometryType}`
+            );
+          },
+          pointToLayer: function (feature, latlng) {
+            // Style for point markers
+            return L.marker(latlng, {
+              icon: L.icon({
+                iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+                iconSize: [25, 41],
+                iconAnchor: [12, 41],
+                popupAnchor: [1, -34]
+              })
+            });
+          },
+          style: function (feature) {
+            // Style for polygons
+            if (feature.geometry.type === 'Polygon') {
+              return {
+                color: '#3388ff',
+                weight: 2,
+                fillOpacity: 0.2
+              };
+            }
+          }
+        }).addTo(map);
+
+        // Adjust map bounds to fit filtered features
         const group = L.featureGroup(filteredFeatures.map(feature => {
           if (feature.geometry.type === 'Point') {
             return L.marker([feature.geometry.coordinates[1], feature.geometry.coordinates[0]]);
@@ -105,12 +132,18 @@
           }
         }));
         map.fitBounds(group.getBounds());
+        hideError();
       } else {
-        // Fallback to default view if no features are displayed
+        // Show error message and set default view
+        showError('לא נמצאו ערים התואמות לקוד העיר שהוזן');
         map.setView([31.7683, 35.2137], 8);
       }
     })
-    .catch(error => console.error('Error loading GeoJSON:', error));
+    .catch(error => {
+      console.error('Error loading GeoJSON:', error);
+      showError('שגיאה בטעינת נתוני GeoJSON');
+      map.setView([31.7683, 35.2137], 8);
+    });
 </script>
 </body>
 </html>
