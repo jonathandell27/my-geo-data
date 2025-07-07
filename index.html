@@ -45,7 +45,7 @@
     position: 'topleft',
     unit: 'metres',
     showBearings: true,
- pesclearMeasurementsOnStop: false,
+    clearMeasurementsOnStop: false,
     showClearControl: true,
     showUnitControl: true
   }).addTo(map);
@@ -76,76 +76,124 @@
     errorControl._div.style.display = 'none';
   }
 
-  // Fetch and display GeoJSON data
-  fetch('https://jonathandell27.github.io/my-geo-data/israel_cities.geojson')
+  // Create layer groups for israel_cities and servies_city
+  const israelCitiesLayer = L.layerGroup();
+  const serviesCityLayer = L.layerGroup();
+
+  // Fetch and display GeoJSON data for israel_cities
+  const israelCitiesPromise = fetch('https://jonathandell27.github.io/my-geo-data/israel_cities.geojson')
     .then(response => response.json())
     .then(data => {
+      return { layerName: 'israel_cities', data };
+    });
+
+  // Fetch and display GeoJSON data for servies_city
+  const serviesCityPromise = fetch('https://jonathandell27.github.io/my-geo-data/servies_city.geojson')
+    .then(response => response.json())
+    .then(data => {
+      return { layerName: 'servies_city', data };
+    });
+
+  // Process both layers
+  Promise.all([israelCitiesPromise, serviesCityPromise])
+    .then(layers => {
       const citycodeFilter = getURLParameter('citycode');
       const showAll = getURLParameter('showAll') === 'true';
 
-      // Filter features based on parameters
-      let filteredFeatures;
-      if (showAll || citycodeFilter === 'All' || citycodeFilter === '') {
-        filteredFeatures = data.features;
-      } else {
-        filteredFeatures = data.features.filter(feature => feature.properties.citycode == citycodeFilter);
-      }
+      let allFilteredFeatures = [];
+      let bounds = L.latLngBounds();
 
-      console.log('Filtered features:', filteredFeatures.length, filteredFeatures);
+      // Process each layer
+      layers.forEach(({ layerName, data }) => {
+        let filteredFeatures;
+        if (showAll || citycodeFilter === 'ALL' || citycodeFilter === '') {
+          filteredFeatures = data.features;
+        } else {
+          // Filter based on citycode for israel_cities or setl_code for servies_city
+          filteredFeatures = data.features.filter(feature =>
+            layerName === 'israel_cities'
+              ? feature.properties.citycode == citycodeFilter
+              : feature.properties.setl_code == citycodeFilter
+          );
+        }
 
-      // Check if there are features to display
-      if (filteredFeatures.length > 0) {
-        // Add GeoJSON layer for points and polygons
+        console.log(`Filtered features for ${layerName}:`, filteredFeatures.length, filteredFeatures);
+
+        // Add GeoJSON layer
         const geoJsonLayer = L.geoJSON(filteredFeatures, {
           onEachFeature: function (feature, layer) {
-            // Add popup with city name, citycode, and geometry type
+            // Add popup with name, code, and geometry type
+            const code = layerName === 'israel_cities' ? feature.properties.citycode : feature.properties.setl_code;
             const geometryType = feature.geometry.type === 'Point' ? 'נקודה' : 'פוליגון';
             layer.bindPopup(
               `<b>${feature.properties.name}</b><br>` +
-              `קוד עיר: ${feature.properties.citycode}<br>` +
+              `קוד: ${code}<br>` +
               `סוג: ${geometryType}`
             );
           },
           pointToLayer: function (feature, latlng) {
-            // Style for point markers
-            return L.marker(latlng, {
-              icon: L.icon({
-                iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-                iconSize: [25, 41],
-                iconAnchor: [12, 41],
-                popupAnchor: [1, -34]
-              })
-            });
+            // Style for point markers (only for israel_cities)
+            if (layerName === 'israel_cities' && feature.geometry.type === 'Point') {
+              return L.marker(latlng, {
+                icon: L.icon({
+                  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+                  iconSize: [25, 41],
+                  iconAnchor: [12, 41],
+                  popupAnchor: [1, -34]
+                })
+              });
+            }
           },
           style: function (feature) {
             // Style for polygons
             if (feature.geometry.type === 'Polygon') {
-              return {
-                color: '#3388ff',
-                weight: 2,
-                fillOpacity: 0.2
-              };
+              if (layerName === 'israel_cities') {
+                return {
+                  color: '#3388ff',
+                  weight: 2,
+                  fillOpacity: 0.2
+                };
+              } else if (layerName === 'servies_city') {
+                return {
+                  color: '#0000FF',
+                  weight: 2,
+                  fillOpacity: 0
+                };
+              }
             }
           }
-        }).addTo(map);
+        });
 
-        // Calculate bounds and focus on displayed features
-        const bounds = geoJsonLayer.getBounds();
-        if (bounds.isValid()) {
-          map.fitBounds(bounds);
-          console.log('Focusing on bounds:', bounds.toBBoxString());
-          hideError();
-        } else {
-          console.warn('Invalid bounds, reverting to default view');
-          showError('לא ניתן להתמקד בישויות - גבולות לא תקינים');
-          map.setView([31.7683, 35.2137], 8);
-        }
+        // Add to appropriate layer group
+        geoJsonLayer.addTo(layerName === 'israel_cities' ? israelCitiesLayer : serviesCityLayer);
+
+        // Collect features and extend bounds
+        allFilteredFeatures = allFilteredFeatures.concat(filteredFeatures);
+        geoJsonLayer.eachLayer(layer => {
+          bounds.extend(layer.getBounds());
+        });
+      });
+
+      // Add layer groups to map
+      israelCitiesLayer.addTo(map);
+      serviesCityLayer.addTo(map);
+
+      // Add layer control
+      const overlayLayers = {
+        'ערים ונקודות (israel_cities)': israelCitiesLayer,
+        'פוליגונים (servies_city)': serviesCityLayer
+      };
+      L.control.layers(null, overlayLayers, { position: 'topright' }).addTo(map);
+
+      // Focus on displayed features
+      if (allFilteredFeatures.length > 0 && bounds.isValid()) {
+        map.fitBounds(bounds);
+        console.log('Focusing on bounds:', bounds.toBBoxString());
+        hideError();
       } else {
-        console.warn('No features to display for citycode:', citycodeFilter);
-        showError('לא נמצאו ערים התואמות לקוד העיר שהוזן');
-        map.setView([31.7683, 
-
-35.2137], 8);
+        console.warn('No features to display or invalid bounds');
+        showError('לא נמצאו ישויות התואמות לקוד שהוזן');
+        map.setView([31.7683, 35.2137], 8);
       }
     })
     .catch(error => {
