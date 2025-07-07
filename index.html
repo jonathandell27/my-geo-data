@@ -53,7 +53,11 @@
   // Function to get URL parameter
   function getURLParameter(name) {
     const params = new URLSearchParams(window.location.search);
-    return params.get(name);
+    const value = params.get(name);
+    if (name === 'citycode' && value && value !== 'ALL' && value !== '') {
+      return value.split(',').map(Number).filter(n => !isNaN(n));
+    }
+    return value;
   }
 
   // Create a control for error messages
@@ -106,14 +110,14 @@
       // Process each layer
       layers.forEach(({ layerName, data }) => {
         let filteredFeatures;
-        if (showAll || citycodeFilter === 'All' || citycodeFilter === '') {
+        if (showAll || citycodeFilter === 'ALL' || citycodeFilter === '') {
           filteredFeatures = data.features;
         } else {
           // Filter based on citycode for israel_cities or setl_code for servies_city
           filteredFeatures = data.features.filter(feature =>
             layerName === 'israel_cities'
-              ? String(feature.properties.citycode) === String(citycodeFilter)
-              : String(feature.properties.setl_code) === String(citycodeFilter)
+              ? citycodeFilter.includes(Number(feature.properties.citycode))
+              : citycodeFilter.includes(Number(feature.properties.setl_code))
           );
         }
 
