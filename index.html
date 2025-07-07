@@ -2,7 +2,7 @@
 <html lang="he" dir="ltr">
 <head>
   <meta charset="UTF-8" />
-  <title>מדידת מרחקים עם Leaflet.PolylineMeasure</title>
+  <title>מפת ערים בישראל עם Leaflet.PolylineMeasure</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <!-- Leaflet CSS -->
@@ -22,16 +22,18 @@
   </style>
 </head>
 <body>
-
 <div id="map"></div>
 
 <script>
-  const map = L.map('map').setView([31.7683, 35.2137], 13);
+  // Initialize the map
+  const map = L.map('map').setView([31.7683, 35.2137], 8);
 
+  // Add OpenStreetMap tiles
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap contributors'
   }).addTo(map);
 
+  // Add PolylineMeasure control
   L.control.polylineMeasure({
     position: 'topleft',
     unit: 'metres',
@@ -40,7 +42,62 @@
     showClearControl: true,
     showUnitControl: true
   }).addTo(map);
-</script>
 
+  // Function to get URL parameter
+  function getURLParameter(name) {
+    const params = new URLSearchParams(window.location.search);
+    return params.get(name);
+  }
+
+  // Fetch and display GeoJSON data
+  fetch('https://jonathandell27.github.io/my-geo-data/israel_cities.geojson')
+    .then(response => response.json())
+    .then(data => {
+      const citycodeFilter = getURLParameter('citycode');
+      const filteredFeatures = citycodeFilter
+        ? data.features.filter(feature => feature.properties.citycode == citycodeFilter)
+        : data.features;
+
+      // Add GeoJSON layer for points and polygons
+      L.geoJSON(filteredFeatures, {
+        onEachFeature: function (feature, layer) {
+          // Add popup with city name and citycode
+          layer.bindPopup(`<b>${feature.properties.name}</b><br>קוד עיר: ${feature.properties.citycode}`);
+        },
+        pointToLayer: function (feature, latlng) {
+          // Style for point markers
+          return L.marker(latlng, {
+            icon: L.icon({
+              iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+              iconSize: [25, 41],
+              iconAnchor: [12, 41],
+              popupAnchor: [1, -34]
+            })
+          });
+        },
+        style: function (feature) {
+          // Style for polygons
+          return {
+            color: '#3388ff',
+            weight: 2,
+            fillOpacity: 0.2
+          };
+        }
+      }).addTo(map);
+
+      // Adjust map bounds to fit filtered features
+      if (filteredFeatures.length > 0) {
+        const group = L.featureGroup(filteredFeatures.map(feature => {
+          if (feature.geometry.type === 'Point') {
+            return L.marker([feature.geometry.coordinates[1], feature.geometry.coordinates[0]]);
+          } else if (feature.geometry.type === 'Polygon') {
+            return L.polygon(feature.geometry.coordinates);
+          }
+        }));
+        map.fitBounds(group.getBounds());
+      }
+    })
+    .catch(error => console.error('Error loading GeoJSON:', error));
+</script>
 </body>
 </html>
