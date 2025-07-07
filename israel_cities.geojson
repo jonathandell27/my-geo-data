@@ -10,8 +10,15 @@
       "geometry": {
         "type": "Point",
         "coordinates": [35.2137, 31.7683]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "ירושלים",
+        "citycode": 1
       },
-      "geometry_polygon": {
+      "geometry": {
         "type": "Polygon",
         "coordinates": [[
           [35.1937, 31.7883], [35.2337, 31.7883], [35.2337, 31.7483], [35.1937, 31.7483], [35.1937, 31.7883]
@@ -27,8 +34,15 @@
       "geometry": {
         "type": "Point",
         "coordinates": [34.7818, 32.0853]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "תל אביב",
+        "citycode": 2
       },
-      "geometry_polygon": {
+      "geometry": {
         "type": "Polygon",
         "coordinates": [[
           [34.7618, 32.1053], [34.8018, 32.1053], [34.8018, 32.0653], [34.7618, 32.0653], [34.7618, 32.1053]
@@ -44,8 +58,15 @@
       "geometry": {
         "type": "Point",
         "coordinates": [34.9896, 32.7940]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "חיפה",
+        "citycode": 3
       },
-      "geometry_polygon": {
+      "geometry": {
         "type": "Polygon",
         "coordinates": [[
           [34.9696, 32.8140], [35.0096, 32.8140], [35.0096, 32.7740], [34.9696, 32.7740], [34.9696, 32.8140]
@@ -61,8 +82,15 @@
       "geometry": {
         "type": "Point",
         "coordinates": [34.7913, 31.2518]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "באר שבע",
+        "citycode": 4
       },
-      "geometry_polygon": {
+      "geometry": {
         "type": "Polygon",
         "coordinates": [[
           [34.7713, 31.2718], [34.8113, 31.2718], [34.8113, 31.2318], [34.7713, 31.2318], [34.7713, 31.2718]
@@ -78,8 +106,15 @@
       "geometry": {
         "type": "Point",
         "coordinates": [34.6467, 31.8038]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "אשדוד",
+        "citycode": 5
       },
-      "geometry_polygon": {
+      "geometry": {
         "type": "Polygon",
         "coordinates": [[
           [34.6267, 31.8238], [34.6667, 31.8238], [34.6667, 31.7838], [34.6267, 31.7838], [34.6267, 31.8238]
@@ -95,8 +130,15 @@
       "geometry": {
         "type": "Point",
         "coordinates": [34.8599, 32.3329]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "נתניה",
+        "citycode": 6
       },
-      "geometry_polygon": {
+      "geometry": {
         "type": "Polygon",
         "coordinates": [[
           [34.8399, 32.3529], [34.8799, 32.3529], [34.8799, 32.3129], [34.8399, 32.3129], [34.8399, 32.3529]
@@ -112,8 +154,15 @@
       "geometry": {
         "type": "Point",
         "coordinates": [34.8141, 32.0684]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "רמת גן",
+        "citycode": 7
       },
-      "geometry_polygon": {
+      "geometry": {
         "type": "Polygon",
         "coordinates": [[
           [34.7941, 32.0884], [34.8341, 32.0884], [34.8341, 32.0484], [34.7941, 32.0484], [34.7941, 32.0884]
@@ -129,8 +178,15 @@
       "geometry": {
         "type": "Point",
         "coordinates": [34.8878, 32.0840]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "פתח תקווה",
+        "citycode": 8
       },
-      "geometry_polygon": {
+      "geometry": {
         "type": "Polygon",
         "coordinates": [[
           [34.8678, 32.1040], [34.9078, 32.1040], [34.9078, 32.0640], [34.8678, 32.0640], [34.8678, 32.1040]
@@ -146,8 +202,15 @@
       "geometry": {
         "type": "Point",
         "coordinates": [34.7921, 31.9710]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "ראשון לציון",
+        "citycode": 9
       },
-      "geometry_polygon": {
+      "geometry": {
         "type": "Polygon",
         "coordinates": [[
           [34.7721, 31.9910], [34.8121, 31.9910], [34.8121, 31.9510], [34.7721, 31.9510], [34.7721, 31.9910]
@@ -163,8 +226,15 @@
       "geometry": {
         "type": "Point",
         "coordinates": [34.7792, 32.0212]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "חולון",
+        "citycode": 10
       },
-      "geometry_polygon": {
+      "geometry": {
         "type": "Polygon",
         "coordinates": [[
           [34.7592, 32.0412], [34.7992, 32.0412], [34.7992, 32.0012], [34.7592, 32.0012], [34.7592, 32.0412]
