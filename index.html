@@ -54,15 +54,23 @@
     .then(response => response.json())
     .then(data => {
       const citycodeFilter = getURLParameter('citycode');
-      const filteredFeatures = citycodeFilter
-        ? data.features.filter(feature => feature.properties.citycode == citycodeFilter)
-        : data.features;
+      const showAll = getURLParameter('showAll') === 'true';
+
+      // Filter features based on parameters
+      const filteredFeatures = showAll || !citycodeFilter
+        ? data.features
+        : data.features.filter(feature => feature.properties.citycode == citycodeFilter);
 
       // Add GeoJSON layer for points and polygons
       L.geoJSON(filteredFeatures, {
         onEachFeature: function (feature, layer) {
-          // Add popup with city name and citycode
-          layer.bindPopup(`<b>${feature.properties.name}</b><br>קוד עיר: ${feature.properties.citycode}`);
+          // Add popup with city name, citycode, and geometry type
+          const geometryType = feature.geometry.type === 'Point' ? 'נקודה' : 'פוליגון';
+          layer.bindPopup(
+            `<b>${feature.properties.name}</b><br>` +
+            `קוד עיר: ${feature.properties.citycode}<br>` +
+            `סוג: ${geometryType}`
+          );
         },
         pointToLayer: function (feature, latlng) {
           // Style for point markers
@@ -77,11 +85,13 @@
         },
         style: function (feature) {
           // Style for polygons
-          return {
-            color: '#3388ff',
-            weight: 2,
-            fillOpacity: 0.2
-          };
+          if (feature.geometry.type === 'Polygon') {
+            return {
+              color: '#3388ff',
+              weight: 2,
+              fillOpacity: 0.2
+            };
+          }
         }
       }).addTo(map);
 
@@ -95,6 +105,9 @@
           }
         }));
         map.fitBounds(group.getBounds());
+      } else {
+        // Fallback to default view if no features are displayed
+        map.setView([31.7683, 35.2137], 8);
       }
     })
     .catch(error => console.error('Error loading GeoJSON:', error));
