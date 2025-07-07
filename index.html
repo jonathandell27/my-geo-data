@@ -45,7 +45,7 @@
     position: 'topleft',
     unit: 'metres',
     showBearings: true,
-    clearMeasurementsOnStop: false,
+ pesclearMeasurementsOnStop: false,
     showClearControl: true,
     showUnitControl: true
   }).addTo(map);
@@ -84,9 +84,12 @@
       const showAll = getURLParameter('showAll') === 'true';
 
       // Filter features based on parameters
-      const filteredFeatures = showAll || !citycodeFilter
-        ? data.features
-        : data.features.filter(feature => feature.properties.citycode == citycodeFilter);
+      let filteredFeatures;
+      if (showAll || citycodeFilter === 'ALL' || citycodeFilter === '') {
+        filteredFeatures = data.features;
+      } else {
+        filteredFeatures = data.features.filter(feature => feature.properties.citycode == citycodeFilter);
+      }
 
       console.log('Filtered features:', filteredFeatures.length, filteredFeatures);
 
@@ -140,7 +143,9 @@
       } else {
         console.warn('No features to display for citycode:', citycodeFilter);
         showError('לא נמצאו ערים התואמות לקוד העיר שהוזן');
-        map.setView([31.7683, 35.2137], 8);
+        map.setView([31.7683, 
+
+35.2137], 8);
       }
     })
     .catch(error => {
