@@ -24,6 +24,7 @@
       padding: 10px;
       border: 1px solid #ff0000;
       border-radius: 5px;
+      font-size: 14px;
     }
   </style>
 </head>
@@ -87,10 +88,12 @@
         ? data.features
         : data.features.filter(feature => feature.properties.citycode == citycodeFilter);
 
+      console.log('Filtered features:', filteredFeatures.length, filteredFeatures);
+
       // Check if there are features to display
       if (filteredFeatures.length > 0) {
         // Add GeoJSON layer for points and polygons
-        L.geoJSON(filteredFeatures, {
+        const geoJsonLayer = L.geoJSON(filteredFeatures, {
           onEachFeature: function (feature, layer) {
             // Add popup with city name, citycode, and geometry type
             const geometryType = feature.geometry.type === 'Point' ? 'נקודה' : 'פוליגון';
@@ -123,18 +126,19 @@
           }
         }).addTo(map);
 
-        // Adjust map bounds to fit filtered features
-        const group = L.featureGroup(filteredFeatures.map(feature => {
-          if (feature.geometry.type === 'Point') {
-            return L.marker([feature.geometry.coordinates[1], feature.geometry.coordinates[0]]);
-          } else if (feature.geometry.type === 'Polygon') {
-            return L.polygon(feature.geometry.coordinates);
-          }
-        }));
-        map.fitBounds(group.getBounds());
-        hideError();
+        // Calculate bounds and focus on displayed features
+        const bounds = geoJsonLayer.getBounds();
+        if (bounds.isValid()) {
+          map.fitBounds(bounds);
+          console.log('Focusing on bounds:', bounds.toBBoxString());
+          hideError();
+        } else {
+          console.warn('Invalid bounds, reverting to default view');
+          showError('לא ניתן להתמקד בישויות - גבולות לא תקינים');
+          map.setView([31.7683, 35.2137], 8);
+        }
       } else {
-        // Show error message and set default view
+        console.warn('No features to display for citycode:', citycodeFilter);
         showError('לא נמצאו ערים התואמות לקוד העיר שהוזן');
         map.setView([31.7683, 35.2137], 8);
       }
