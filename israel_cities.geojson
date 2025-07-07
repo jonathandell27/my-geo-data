@@ -5,7 +5,7 @@
       "type": "Feature",
       "properties": {
         "name": "ירושלים",
-        "citycode": 1
+        "citycode": 3000
       },
       "geometry": {
         "type": "Point",
@@ -16,7 +16,7 @@
       "type": "Feature",
       "properties": {
         "name": "ירושלים",
-        "citycode": 1
+        "citycode": 3000
       },
       "geometry": {
         "type": "Polygon",
@@ -29,7 +29,7 @@
       "type": "Feature",
       "properties": {
         "name": "תל אביב",
-        "citycode": 2
+        "citycode": 5000
       },
       "geometry": {
         "type": "Point",
@@ -40,7 +40,7 @@
       "type": "Feature",
       "properties": {
         "name": "תל אביב",
-        "citycode": 2
+        "citycode": 5000
       },
       "geometry": {
         "type": "Polygon",
@@ -53,7 +53,7 @@
       "type": "Feature",
       "properties": {
         "name": "חיפה",
-        "citycode": 3
+        "citycode": 4000
       },
       "geometry": {
         "type": "Point",
@@ -64,7 +64,7 @@
       "type": "Feature",
       "properties": {
         "name": "חיפה",
-        "citycode": 3
+        "citycode": 4000
       },
       "geometry": {
         "type": "Polygon",
@@ -77,7 +77,7 @@
       "type": "Feature",
       "properties": {
         "name": "באר שבע",
-        "citycode": 4
+        "citycode": 9000
       },
       "geometry": {
         "type": "Point",
@@ -88,7 +88,7 @@
       "type": "Feature",
       "properties": {
         "name": "באר שבע",
-        "citycode": 4
+        "citycode": 9000
       },
       "geometry": {
         "type": "Polygon",
@@ -101,7 +101,7 @@
       "type": "Feature",
       "properties": {
         "name": "אשדוד",
-        "citycode": 5
+        "citycode": 70
       },
       "geometry": {
         "type": "Point",
@@ -112,7 +112,7 @@
       "type": "Feature",
       "properties": {
         "name": "אשדוד",
-        "citycode": 5
+        "citycode": 70
       },
       "geometry": {
         "type": "Polygon",
@@ -125,7 +125,7 @@
       "type": "Feature",
       "properties": {
         "name": "נתניה",
-        "citycode": 6
+        "citycode": 7400
       },
       "geometry": {
         "type": "Point",
@@ -136,7 +136,7 @@
       "type": "Feature",
       "properties": {
         "name": "נתניה",
-        "citycode": 6
+        "citycode": 7400
       },
       "geometry": {
         "type": "Polygon",
@@ -149,7 +149,7 @@
       "type": "Feature",
       "properties": {
         "name": "רמת גן",
-        "citycode": 7
+        "citycode": 8600
       },
       "geometry": {
         "type": "Point",
@@ -160,7 +160,7 @@
       "type": "Feature",
       "properties": {
         "name": "רמת גן",
-        "citycode": 7
+        "citycode": 8600
       },
       "geometry": {
         "type": "Polygon",
@@ -173,7 +173,7 @@
       "type": "Feature",
       "properties": {
         "name": "פתח תקווה",
-        "citycode": 8
+        "citycode": 7900
       },
       "geometry": {
         "type": "Point",
@@ -184,7 +184,7 @@
       "type": "Feature",
       "properties": {
         "name": "פתח תקווה",
-        "citycode": 8
+        "citycode": 7900
       },
       "geometry": {
         "type": "Polygon",
@@ -197,7 +197,7 @@
       "type": "Feature",
       "properties": {
         "name": "ראשון לציון",
-        "citycode": 9
+        "citycode": 8300
       },
       "geometry": {
         "type": "Point",
@@ -208,7 +208,7 @@
       "type": "Feature",
       "properties": {
         "name": "ראשון לציון",
-        "citycode": 9
+        "citycode": 8300
       },
       "geometry": {
         "type": "Polygon",
@@ -221,7 +221,7 @@
       "type": "Feature",
       "properties": {
         "name": "חולון",
-        "citycode": 10
+        "citycode": 6600
       },
       "geometry": {
         "type": "Point",
@@ -232,7 +232,7 @@
       "type": "Feature",
       "properties": {
         "name": "חולון",
-        "citycode": 10
+        "citycode": 6600
       },
       "geometry": {
         "type": "Polygon",
