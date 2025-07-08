@@ -25,7 +25,7 @@
     }
     #map {
       width: 100%;
-      height: 600px;
+      height: 100vh;
       position: relative;
       z-index: 1;
     }
@@ -38,16 +38,9 @@
     }
     #legend, #polygon-legend {
       position: absolute;
-      background: white;
-      padding: 6px 10px;
-      border: 1px solid #ccc;
-      border-radius: 5px;
       font-family: Arial, sans-serif;
       font-size: 12px;
       z-index: 900;
-      box-shadow: 0 0 15px rgba(0,0,0,0.2);
-      max-height: 300px;
-      overflow-y: auto;
     }
     .legend-item, .polygon-legend-item {
       display: flex;
@@ -153,7 +146,7 @@
   function getURLParameter(name) {
     const params = new URLSearchParams(window.location.search);
     const value = params.get(name);
-    if (name === 'yishuv_cd' && value && value !== 'ALL' && value !== '') {
+    if ((name === 'yishuv_cd' || name === 'Stationid') && value && value !== 'ALL' && value !== '') {
       return value.split(',').map(Number).filter(n => !isNaN(n));
     }
     return value;
@@ -197,18 +190,22 @@
     .then(response => response.json())
     .then(data => {
       const yishuvCdFilter = getURLParameter('yishuv_cd');
+      const stationIdFilter = getURLParameter('Stationid');
       const showAll = getURLParameter('showAll') === 'true';
 
       let filteredFeatures;
-      if (showAll || yishuvCdFilter === 'ALL_VALUES' || yishuvCdFilter === '' || yishuvCdFilter == null) {
+      if (showAll || (yishuvCdFilter === 'ALL_VALUES' && stationIdFilter === 'ALL_VALUES') || (yishuvCdFilter == null && stationIdFilter == null)) {
         filteredFeatures = data.features;
       } else {
-        filteredFeatures = data.features.filter(feature =>
-          yishuvCdFilter.includes(Number(feature.properties.yishuv_cd))
-        );
+        filteredFeatures = data.features.filter(feature => {
+          const matchesYishuv = yishuvCdFilter ? yishuvCdFilter.includes(Number(feature.properties.yishuv_cd)) : true;
+          const matchesStation = stationIdFilter ? stationIdFilter.includes(Number(feature.properties.Stationid)) : true;
+          return matchesYishuv && matchesStation;
+        });
       }
 
       console.log('Filtered features:', filteredFeatures.length, filteredFeatures);
+      console.log('yishuv_cd filter:', yishuvCdFilter, 'Stationid filter:', stationIdFilter);
 
       // Calculate unique stations and settlements
       const uniqueStationIds = [...new Set(filteredFeatures.map(f => f.properties.Stationid))];
@@ -373,6 +370,8 @@
       const legend = L.control({ position: 'bottomright' });
       legend.onAdd = function(map) {
         const div = L.DomUtil.create('div', 'legend');
+        div.style.backgroundColor = 'white';
+        div.style.padding = '6px 10px';
         const title = document.createElement('div');
         title.className = 'legend-title';
         title.innerText = `מציג: ${uniqueStationIds.length} תחנות`;
@@ -414,6 +413,8 @@
       const polygonLegend = L.control({ position: 'bottomleft' });
       polygonLegend.onAdd = function(map) {
         const div = L.DomUtil.create('div', 'polygon-legend');
+        div.style.backgroundColor = 'white';
+        div.style.padding = '6px 10px';
         const title = document.createElement('div');
         title.className = 'polygon-legend-title';
         title.innerText = 'אזורי שירות';
