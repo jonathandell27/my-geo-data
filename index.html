@@ -2,22 +2,32 @@
 <html lang="he" dir="ltr">
 <head>
   <meta charset="UTF-8" />
-  <title>מפת ערים בישראל עם Leaflet.PolylineMeasure</title>
+  <title>מפת ערים</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <!-- Leaflet CSS -->
+  <!-- Leaflet CSS and JS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  <!-- Leaflet.PolylineMeasure CSS + JS -->
+  <!-- Leaflet.PolylineMeasure CSS and JS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet.polylinemeasure/Leaflet.PolylineMeasure.css" />
   <script src="https://unpkg.com/leaflet.polylinemeasure/Leaflet.PolylineMeasure.js"></script>
 
+  <!-- Leaflet Geocoder CSS and JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+  <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+
   <style>
-    html, body, #map {
+    html, body {
       height: 100%;
       margin: 0;
       padding: 0;
+    }
+    #map {
+      width: 100%;
+      height: 1000px;
+      position: relative;
+      z-index: 1;
     }
     .error-message {
       background-color: #ffcccc;
@@ -26,23 +36,56 @@
       border-radius: 5px;
       font-size: 14px;
     }
-    .legend {
-      background-color: white;
-      padding: 10px;
-      border-radius: 5px;
+    #legend, #polygon-legend {
+      position: absolute;
+      background: white;
+      padding: 6px 10px;
       border: 1px solid #ccc;
-      font-size: 14px;
-      line-height: 18px;
+      border-radius: 5px;
+      font-family: Arial, sans-serif;
+      font-size: 12px;
+      z-index: 900;
+      box-shadow: 0 0 15px rgba(0,0,0,0.2);
+      max-height: 300px;
+      overflow-y: auto;
     }
-    .legend i {
-      width: 18px;
-      height: 18px;
-      float: right;
-      margin-left: 8px;
-      opacity: 0.7;
+    .legend-item, .polygon-legend-item {
+      display: flex;
+      align-items: center;
+      margin-bottom: 5px;
     }
-    .legend i.circle {
+    .legend-shape, .polygon-legend-shape {
+      width: 20px;
+      height: 20px;
+      margin-right: 8px;
+      display: inline-block;
+      border: 1px dashed black;
+    }
+    .legend-shape.line {
+      width: 40px;
+      height: 3px;
+    }
+    .legend-shape.circle {
       border-radius: 50%;
+    }
+    .legend-title, .polygon-legend-title {
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+    .leaflet-control-geocoder {
+      z-index: 1000;
+      background: white;
+      border-radius: 5px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.2);
+      padding: 5px;
+    }
+    .layer-toggle {
+      background: white;
+      border-radius: 5px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.2);
+      padding: 5px;
+      font-family: Arial, sans-serif;
+      font-size: 12px;
     }
   </style>
 </head>
@@ -51,7 +94,7 @@
 
 <script>
   // Initialize the map
-  const map = L.map('map').setView([31.7683, 35.2137], 8);
+  const map = L.map('map').setView([31.9, 34.88], 10);
 
   // Create custom panes for layer ordering
   map.createPane('polygonsPane');
@@ -61,20 +104,50 @@
   map.createPane('pointsPane');
   map.getPane('pointsPane').style.zIndex = 500;
 
-  // Add OpenStreetMap tiles
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  // Add base layers
+  const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
     attribution: '© OpenStreetMap contributors'
-  }).addTo(map);
+  });
+  const googleLayer = L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+    maxZoom: 20,
+    subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+    attribution: '© Google Maps'
+  });
+  const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    attribution: '© Esri, Maxar, GeoEye, Earthstar Geographics'
+  });
+  const govmapLayer = L.tileLayer('https://cdnil.govmap.gov.il/xyz/heb/{z}/{x}/{y}.png', {
+    attribution: '© Govmap Israel',
+    maxZoom: 18
+  });
+  osmLayer.addTo(map); // Default base layer
+
+  const baseLayers = {
+    'OpenStreetMap': osmLayer,
+    'Google Maps': googleLayer,
+    'מפת לוויין': satelliteLayer,
+    'Govmap': govmapLayer
+  };
+  L.control.layers(baseLayers, null, { position: 'topright' }).addTo(map);
 
   // Add PolylineMeasure control
   L.control.polylineMeasure({
     position: 'topleft',
     unit: 'metres',
-    showBearings: true,
+    showBearings: false,
     clearMeasurementsOnStop: false,
     showClearControl: true,
-    showUnitControl: true
+    showUnitControl: false
   }).addTo(map);
+
+  // Add Geocoder control
+  L.Control.geocoder({
+    defaultMarkGeocode: true,
+    geocoder: L.Control.Geocoder.photon()
+  }).addTo(map).on('markgeocode', function(e) {
+    map.setView(e.geocode.center, 12);
+  });
 
   // Function to get URL parameter
   function getURLParameter(name) {
@@ -106,27 +179,20 @@
     errorControl._div.style.display = 'none';
   }
 
-  // Create layer groups for different feature types
+  // Create layer groups
   const serviceAreaLayer = L.layerGroup();
   const longPathLayer = L.layerGroup();
   const shortPathLayer = L.layerGroup();
   const stationsLayer = L.layerGroup();
 
-  // Add legend control
-  const legendControl = L.control({ position: 'bottomright' });
-  legendControl.onAdd = function (map) {
-    const div = L.DomUtil.create('div', 'legend');
-    div.innerHTML = `
-      <div><i style="background: #FFFF00; opacity: 0.5;"></i> אזור שירות</div>
-      <div><i style="background: #FF0000;"></i> דרך ארוכה</div>
-      <div><i style="background: #0000FF;"></i> דרך קצרה</div>
-      <div><i style="background: #800080;" class="circle"></i> תחנות</div>
-    `;
-    return div;
-  };
-  legendControl.addTo(map);
+  // Define colors for polygons
+  const colors = [
+    '#FFFF00', '#00FF00', '#FFA500', '#00CED1', '#FFD700', '#ADFF2F', '#1E90FF',
+    '#FF69B4', '#32CD32', '#8A2BE2', '#FF4500', '#20B2AA', '#98FB98', '#6A5ACD',
+    '#DC143C', '#2E8B57', '#CD5C5C'
+  ];
 
-  // Fetch and display GeoJSON data for Station_Service
+  // Fetch and display GeoJSON data
   fetch('https://jonathandell27.github.io/my-geo-data/Station_Service.geojson')
     .then(response => response.json())
     .then(data => {
@@ -142,12 +208,20 @@
         );
       }
 
-      console.log('Filtered features for Station_Service:', filteredFeatures.length, filteredFeatures);
+      console.log('Filtered features:', filteredFeatures.length, filteredFeatures);
+
+      // Calculate unique stations and settlements
+      const uniqueStationIds = [...new Set(filteredFeatures.map(f => f.properties.Stationid))];
+      const uniqueSetlNames = [...new Set(filteredFeatures.map(f => f.properties.SETL_NAME))].filter(name => name != null && name !== '');
+      const setlNameRank = {};
+      uniqueSetlNames.forEach((name, index) => {
+        setlNameRank[name] = index;
+      });
+      console.log('setlNames:', uniqueSetlNames, 'setlNameRank:', setlNameRank);
 
       // Add GeoJSON layer
       const geoJsonLayer = L.geoJSON(filteredFeatures, {
         onEachFeature: function (feature, layer) {
-          // Add popup with specified properties
           const props = feature.properties;
           layer.bindPopup(
             `<b>מספר תחנה: ${props.Stationid || 'לא זמין'}</b><br>` +
@@ -157,7 +231,6 @@
             `אורך דרך קצרה: ${Number(props.Shortest).toFixed(2)}`
           );
 
-          // Add to appropriate layer group based on path and geometry
           const pathType = props.path;
           console.log('Feature path:', pathType, 'Geometry:', feature.geometry.type);
           if (feature.geometry.type === 'Polygon' && pathType === 'Service Area') {
@@ -173,29 +246,33 @@
         },
         style: function (feature) {
           const pathType = feature.properties.path;
+          const setlName = feature.properties.SETL_NAME;
           if (feature.geometry.type === 'Polygon' && pathType === 'Service Area') {
+            const rank = setlNameRank[setlName] || 0;
+            const colorIndex = rank % colors.length;
             return {
-              color: '#FFFF00', // Yellow
-              weight: 2,
-              fillOpacity: 0.5
+              color: 'black',
+              weight: 0,
+              dashArray: '5, 5',
+              fillColor: colors[colorIndex],
+              fillOpacity: 0.8
             };
           } else if (feature.geometry.type === 'LineString' || feature.geometry.type === 'MultiLineString') {
             if (pathType === 'Short') {
-              return {
-                color: '#0000FF', // Blue
-                weight: 3,
-                opacity: 1,
-                dashArray: '5, 10'
-              };
-            } else if (pathType === 'Long') {
               return {
                 color: '#FF0000', // Red
                 weight: 3,
                 opacity: 1,
                 dashArray: '5, 10'
               };
+            } else if (pathType === 'Long') {
+              return {
+                color: '#0000FF', // Blue
+                weight: 3,
+                opacity: 1,
+                dashArray: '5, 10'
+              };
             }
-            // Default style for unhandled LineString/MultiLineString cases
             return {
               color: '#808080', // Gray
               weight: 3,
@@ -206,7 +283,7 @@
         }
       });
 
-      // Create points layer from LatDifferrent and LongDifferrent
+      // Create points layer
       filteredFeatures.forEach(feature => {
         const props = feature.properties;
         if (props.LatDifferrent != null && props.LongDifferrent != null && !isNaN(Number(props.LatDifferrent)) && !isNaN(Number(props.LongDifferrent))) {
@@ -216,10 +293,9 @@
           const pointLayer = L.circleMarker([lat, lon], {
             radius: 6,
             fillColor: '#800080', // Purple
-            color: '#800080',
-            weight: 1,
-            opacity: 1,
-            fillOpacity: 0.8,
+            color: 'black',
+            weight: 2,
+            fillOpacity: 0.7,
             pane: 'pointsPane'
           }).bindPopup(
             `<b>מספר תחנה: ${props.Stationid || 'לא זמין'}</b><br>` +
@@ -230,7 +306,7 @@
           );
           pointLayer.addTo(stationsLayer);
         } else {
-          console.warn('Invalid or missing coordinates for Stationid:', props.Stationid, 'Lat:', props.LatDifferrent, 'Lon:', props.LongDifferrent);
+          console.warn('Invalid coordinates for Stationid:', props.Stationid, 'Lat:', props.LatDifferrent, 'Lon:', props.LongDifferrent);
         }
       });
 
@@ -247,21 +323,125 @@
         }
       });
 
-      // Add layer groups to map in correct order
+      // Add layer groups to map
       serviceAreaLayer.addTo(map);
       longPathLayer.addTo(map);
       shortPathLayer.addTo(map);
       stationsLayer.addTo(map);
 
-      // Add layer control
-      const overlayLayers = {
-        'אזור שירות': serviceAreaLayer,
-        'דרך ארוכה': longPathLayer,
-        'דרך קצרה': shortPathLayer,
-        'תחנות': stationsLayer
+      // Add layer toggle control
+      const layersToggle = L.control({ position: 'topright' });
+      layersToggle.onAdd = function(map) {
+        const div = L.DomUtil.create('div', 'layer-toggle');
+        const checkboxes = [
+          { layer: 'Service Area', text: 'אזור שירות' },
+          { layer: 'Long', text: 'דרך ארוכה' },
+          { layer: 'Short', text: 'דרך קצרה' },
+          { layer: 'Stations', text: 'תחנות' }
+        ];
+        checkboxes.forEach(function(item) {
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.checked = true;
+          checkbox.onchange = function() {
+            const layerGroup = {
+              'Service Area': serviceAreaLayer,
+              'Long': longPathLayer,
+              'Short': shortPathLayer,
+              'Stations': stationsLayer
+            }[item.layer];
+            if (this.checked) {
+              if (!map.hasLayer(layerGroup)) {
+                layerGroup.addTo(map);
+              }
+            } else {
+              if (map.hasLayer(layerGroup)) {
+                map.removeLayer(layerGroup);
+              }
+            }
+          };
+          const text = document.createTextNode(item.text);
+          div.appendChild(checkbox);
+          div.appendChild(text);
+          div.appendChild(document.createElement('br'));
+        });
+        return div;
       };
-      console.log('Adding layer control with overlays:', overlayLayers);
-      L.control.layers(null, overlayLayers, { position: 'topright' }).addTo(map);
+      layersToggle.addTo(map);
+
+      // Add main legend
+      const legend = L.control({ position: 'bottomright' });
+      legend.onAdd = function(map) {
+        const div = L.DomUtil.create('div', 'legend');
+        const title = document.createElement('div');
+        title.className = 'legend-title';
+        title.innerText = `מציג: ${uniqueStationIds.length} תחנות`;
+        div.appendChild(title);
+        const items = [
+          { shape: 'rectangle', fillColor: 'transparent', opacity: 1, label: 'אזור שירות' },
+          { shape: 'line', color: '#0000FF', weight: 3, label: 'דרך ארוכה' },
+          { shape: 'line', color: '#FF0000', weight: 3, label: 'דרך קצרה' },
+          { shape: 'circle', fillColor: '#800080', weight: 2, label: 'תחנות' }
+        ];
+        items.forEach(function(item) {
+          const row = document.createElement('div');
+          row.className = 'legend-item';
+          const colorBox = document.createElement('span');
+          colorBox.className = 'legend-shape';
+          if (item.shape === 'circle') {
+            colorBox.className += ' circle';
+            colorBox.style.backgroundColor = item.fillColor;
+            colorBox.style.border = `${item.weight}px solid black`;
+          } else if (item.shape === 'line') {
+            colorBox.className += ' line';
+            colorBox.style.backgroundColor = item.color;
+            colorBox.style.border = `${item.weight}px solid ${item.color}`;
+          } else {
+            colorBox.style.backgroundColor = item.fillColor;
+            colorBox.style.opacity = item.opacity;
+            colorBox.style.border = '1px dashed black';
+          }
+          const text = document.createTextNode(item.label);
+          row.appendChild(colorBox);
+          row.appendChild(text);
+          div.appendChild(row);
+        });
+        return div;
+      };
+      legend.addTo(map);
+
+      // Add polygon legend
+      const polygonLegend = L.control({ position: 'bottomleft' });
+      polygonLegend.onAdd = function(map) {
+        const div = L.DomUtil.create('div', 'polygon-legend');
+        const title = document.createElement('div');
+        title.className = 'polygon-legend-title';
+        title.innerText = 'אזורי שירות';
+        div.appendChild(title);
+        const note = document.createElement('div');
+        note.innerText = 'מציג עד 10 יישובים';
+        div.appendChild(note);
+        if (uniqueSetlNames.length > 0) {
+          uniqueSetlNames.slice(0, 10).forEach(function(setlName) {
+            const rank = setlNameRank[setlName];
+            const colorIndex = rank % colors.length;
+            console.log('Polygon legend:', setlName, 'rank:', rank, 'color:', colors[colorIndex]);
+            const row = document.createElement('div');
+            row.className = 'polygon-legend-item';
+            const colorBox = document.createElement('span');
+            colorBox.className = 'polygon-legend-shape';
+            colorBox.style.backgroundColor = colors[colorIndex];
+            const text = document.createTextNode(setlName);
+            row.appendChild(colorBox);
+            row.appendChild(text);
+            div.appendChild(row);
+          });
+        } else {
+          div.innerHTML += '<div>אין יישובים זמינים</div>';
+        }
+        return div;
+      };
+      polygonLegend.addTo(map);
 
       // Focus on displayed features
       if (filteredFeatures.length > 0 && bounds.isValid()) {
@@ -271,13 +451,13 @@
       } else {
         console.warn('No features to display or invalid bounds');
         showError('לא נמצאו ישויות התואמות לקוד שהוזן');
-        map.setView([31.7683, 35.2137], 8);
+        map.setView([31.9, 34.88], 10);
       }
     })
     .catch(error => {
       console.error('Error loading GeoJSON:', error);
       showError('שגיאה בטעינת נתוני GeoJSON');
-      map.setView([31.7683, 35.2137], 8);
+      map.setView([31.9, 34.88], 10);
     });
 </script>
 </body>
