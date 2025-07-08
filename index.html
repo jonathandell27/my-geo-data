@@ -26,6 +26,21 @@
       border-radius: 5px;
       font-size: 14px;
     }
+    .legend {
+      background-color: white;
+      padding: 10px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      font-size: 14px;
+      line-height: 18px;
+    }
+    .legend i {
+      width: 18px;
+      height: 18px;
+      float: right;
+      margin-left: 8px;
+      opacity: 0.7;
+    }
   </style>
 </head>
 <body>
@@ -54,7 +69,7 @@
   function getURLParameter(name) {
     const params = new URLSearchParams(window.location.search);
     const value = params.get(name);
-    if (name === 'citycode' && value && value !== 'ALL' && value !== '') {
+    if (name === 'yishuv_cd' && value && value !== 'ALL' && value !== '') {
       return value.split(',').map(Number).filter(n => !isNaN(n));
     }
     return value;
@@ -80,119 +95,121 @@
     errorControl._div.style.display = 'none';
   }
 
-  // Create layer groups for israel_cities and servies_city
-  const israelCitiesLayer = L.layerGroup();
-  const serviesCityLayer = L.layerGroup();
+  // Create layer groups for different feature types
+  const serviceAreaLayer = L.layerGroup();
+  const longPathLayer = L.layerGroup();
+  const shortPathLayer = L.layerGroup();
 
-  // Fetch and display GeoJSON data for israel_cities
-  const israelCitiesPromise = fetch('https://jonathandell27.github.io/my-geo-data/israel_cities.geojson')
+  // Add legend control
+  const legendControl = L.control({ position: 'bottomright' });
+  legendControl.onAdd = function (map) {
+    const div = L.DomUtil.create('div', 'legend');
+    div.innerHTML = `
+      <div><i style="background: #FFFF00; opacity: 0.5;"></i> אזור שירות</div>
+      <div><i style="background: #FF0000;"></i> דרך ארוכה</div>
+      <div><i style="background: #0000FF;"></i> דרך קצרה</div>
+    `;
+    return div;
+  };
+  legendControl.addTo(map);
+
+  // Fetch and display GeoJSON data for Station_Service
+  fetch('https://jonathandell27.github.io/my-geo-data/Station_Service.geojson')
     .then(response => response.json())
     .then(data => {
-      return { layerName: 'israel_cities', data };
-    });
-
-  // Fetch and display GeoJSON data for servies_city
-  const serviesCityPromise = fetch('https://jonathandell27.github.io/my-geo-data/servies_city.geojson')
-    .then(response => response.json())
-    .then(data => {
-      return { layerName: 'servies_city', data };
-    });
-
-  // Process both layers
-  Promise.all([israelCitiesPromise, serviesCityPromise])
-    .then(layers => {
-      const citycodeFilter = getURLParameter('citycode');
+      const yishuvCdFilter = getURLParameter('yishuv_cd');
       const showAll = getURLParameter('showAll') === 'true';
 
-      let allFilteredFeatures = [];
-      let bounds = L.latLngBounds();
+      let filteredFeatures;
+      if (showAll || yishuvCdFilter === 'ALL_VALUES' || yishuvCdFilter === '' || yishuvCdFilter == null) {
+        filteredFeatures = data.features;
+      } else {
+        filteredFeatures = data.features.filter(feature =>
+          yishuvCdFilter.includes(Number(feature.properties.yishuv_cd))
+        );
+      }
 
-      // Process each layer
-      layers.forEach(({ layerName, data }) => {
-        let filteredFeatures;
-        if (showAll || citycodeFilter === 'ALL_VALUES' || citycodeFilter === '') {
-          filteredFeatures = data.features;
-        } else {
-          // Filter based on citycode for israel_cities or setl_code for servies_city
-          filteredFeatures = data.features.filter(feature =>
-            layerName === 'israel_cities'
-              ? citycodeFilter.includes(Number(feature.properties.citycode))
-              : citycodeFilter.includes(Number(feature.properties.setl_code))
+      console.log('Filtered features for Station_Service:', filteredFeatures.length, filteredFeatures);
+
+      // Add GeoJSON layer
+      const geoJsonLayer = L.geoJSON(filteredFeatures, {
+        onEachFeature: function (feature, layer) {
+          // Add popup with specified properties
+          const props = feature.properties;
+          layer.bindPopup(
+            `<b>מספר תחנה: ${props.Stationid || 'לא זמין'}</b><br>` +
+            `יישוב משויך: ${props.yishuv_nm || 'לא זמין'}<br>` +
+            `יישוב משורת: ${props.SETL_NAME || 'לא זמין'}<br>` +
+            `אורך דרך ארוכה: ${Number(props.Longest).toFixed(2)}<br>` +
+            `אורך דרך קצרה: ${Number(props.Shortest).toFixed(2)}`
           );
-        }
 
-        console.log(`Filtered features for ${layerName}:`, filteredFeatures.length, filteredFeatures);
-
-        // Add GeoJSON layer
-        const geoJsonLayer = L.geoJSON(filteredFeatures, {
-          onEachFeature: function (feature, layer) {
-            // Add popup with name, code, and geometry type
-            const code = layerName === 'israel_cities' ? feature.properties.citycode : feature.properties.setl_code;
-            const geometryType = feature.geometry.type === 'Point' ? 'נקודה' : 'פוליגון';
-            layer.bindPopup(
-              `<b>${feature.properties.name || 'לא זמין'}</b><br>` +
-              `קוד: ${code}<br>` +
-              `סוג: ${geometryType}`
-            );
-          },
-          pointToLayer: function (feature, latlng) {
-            // Style for point markers (for both layers)
-            return L.marker(latlng, {
-              icon: L.icon({
-                iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-                iconSize: [25, 41],
-                iconAnchor: [12, 41],
-                popupAnchor: [1, -34]
-              })
-            });
-          },
-          style: function (feature) {
-            // Style for polygons
-            if (feature.geometry.type === 'Polygon') {
-              if (layerName === 'israel_cities') {
-                return {
-                  color: '#3388ff',
-                  weight: 2,
-                  fillOpacity: 0.2
-                };
-              } else if (layerName === 'servies_city') {
-                return {
-                  color: '#0000FF',
-                  weight: 2,
-                  fillOpacity: 0
-                };
-              }
+          // Add to appropriate layer group based on path and geometry
+          const pathType = props.path;
+          console.log('Feature path:', pathType, 'Geometry:', feature.geometry.type);
+          if (feature.geometry.type === 'Polygon' && pathType === 'Service Area') {
+            layer.addTo(serviceAreaLayer);
+          } else if ((feature.geometry.type === 'LineString' || feature.geometry.type === 'MultiLineString') && pathType === 'Short') {
+            layer.addTo(shortPathLayer);
+          } else if ((feature.geometry.type === 'LineString' || feature.geometry.type === 'MultiLineString') && pathType === 'Long') {
+            layer.addTo(longPathLayer);
+          }
+        },
+        style: function (feature) {
+          const pathType = feature.properties.path;
+          if (feature.geometry.type === 'Polygon' && pathType === 'Service Area') {
+            return {
+              color: '#FFFF00', // Yellow
+              weight: 2,
+              fillOpacity: 0.5
+            };
+          } else if (feature.geometry.type === 'LineString' || feature.geometry.type === 'MultiLineString') {
+            if (pathType === 'Short') {
+              return {
+                color: '#0000FF', // Blue
+                weight: 3,
+                opacity: 1
+              };
+            } else if (pathType === 'Long') {
+              return {
+                color: '#FF0000', // Red
+                weight: 3,
+                opacity: 1
+              };
             }
+            // Default style for unhandled LineString/MultiLineString cases
+            return {
+              color: '#808080', // Gray
+              weight: 3,
+              opacity: 0.5
+            };
           }
-        });
+        }
+      });
 
-        // Add to appropriate layer group
-        geoJsonLayer.addTo(layerName === 'israel_cities' ? israelCitiesLayer : serviesCityLayer);
-
-        // Collect features and extend bounds
-        allFilteredFeatures = allFilteredFeatures.concat(filteredFeatures);
-        geoJsonLayer.eachLayer(layer => {
-          if (layer instanceof L.Marker) {
-            bounds.extend(layer.getLatLng());
-          } else if (layer instanceof L.Polygon || layer instanceof L.Polyline) {
-            bounds.extend(layer.getBounds());
-          }
-        });
+      // Calculate bounds
+      let bounds = L.latLngBounds();
+      geoJsonLayer.eachLayer(layer => {
+        if (layer instanceof L.Polygon || layer instanceof L.Polyline) {
+          bounds.extend(layer.getBounds());
+        }
       });
 
       // Add layer groups to map
-      israelCitiesLayer.addTo(map);
-      serviesCityLayer.addTo(map);
+      serviceAreaLayer.addTo(map);
+      longPathLayer.addTo(map);
+      shortPathLayer.addTo(map);
 
       // Add layer control
       const overlayLayers = {
-        'ערים ונקודות (israel_cities)': israelCitiesLayer,
-        'פוליגונים (servies_city)': serviesCityLayer
+        'אזור שירות': serviceAreaLayer,
+        'דרך ארוכה': longPathLayer,
+        'דרך קצרה': shortPathLayer
       };
       L.control.layers(null, overlayLayers, { position: 'topright' }).addTo(map);
 
       // Focus on displayed features
-      if (allFilteredFeatures.length > 0 && bounds.isValid()) {
+      if (filteredFeatures.length > 0 && bounds.isValid()) {
         map.fitBounds(bounds, { padding: [50, 50] });
         console.log('Focusing on bounds:', bounds.toBBoxString());
         hideError();
