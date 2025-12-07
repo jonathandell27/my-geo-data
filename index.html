@@ -1,465 +1,352 @@
 <!DOCTYPE html>
-<html lang="he" dir="ltr">
+<html lang="he" dir="rtl">
 <head>
-  <meta charset="UTF-8" />
-  <title>מפת ערים</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ספירת נוסעים – גוש דן</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <style>
+        body{margin:0;padding:0;font-family:"Segoe UI",Arial,sans-serif;direction:rtl;background:#f5f7fa}
+        #map{height:100vh;width:100%}
+        .title{position:absolute;top:12px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#1976d2,#42a5f5);color:white;padding:12px 32px;border-radius:16px;font-weight:bold;font-size:22px;z-index:1000;box-shadow:0 8px 25px rgba(25,118,210,0.4)}
 
-  <!-- Leaflet CSS and JS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+        .loading{position:absolute;top:70px;left:50%;transform:translateX(-50%);background:#e3f2fd;color:#1565c0;padding:14px 32px;border-radius:12px;z-index:1000;font-weight:bold;font-size:16px}
 
-  <!-- Leaflet.PolylineMeasure CSS and JS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet.polylinemeasure/Leaflet.PolylineMeasure.css" />
-  <script src="https://unpkg.com/leaflet.polylinemeasure/Leaflet.PolylineMeasure.js"></script>
+        .time-tabs{position:absolute;top:70px;left:50%;transform:translateX(-50%);background:white;padding:12px;border-radius:16px;box-shadow:0 8px 30px rgba(0,0,0,0.25);z-index:1000;display:flex;gap:14px;flex-wrap:wrap;justify-content:center;max-width:92%}
+        .time-btn{padding:13px 22px;background:#e3f2fd;color:#1565c0;border:none;border-radius:12px;cursor:pointer;font-weight:bold;font-size:15px;min-width:140px}
+        .time-btn:hover{background:#bbdefb}
+        .time-btn.active{background:#1976d2;color:white;box-shadow:0 6px 18px rgba(25,118,210,0.4)}
 
-  <!-- Leaflet Geocoder CSS and JS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
-  <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+        .side-panel-btns{position:absolute;top:140px;right:12px;z-index:1000;display:flex;gap:12px;flex-direction:column}
+        .side-btn{background:#1976d2;color:white;padding:14px 20px;border-radius:14px;box-shadow:0 6px 20px rgba(0,0,0,0.25);font-weight:bold;cursor:pointer;transition:all .3s;text-align:center;min-width:120px;font-size:15.5px}
+        .side-btn:hover{background:#1565c0;transform:translateY(-4px)}
 
-  <style>
-    html, body {
-      height: 100%;
-      margin: 0;
-      padding: 0;
-    }
-    #map {
-      width: 100%;
-      height: 100vh;
-      position: relative;
-      z-index: 1;
-    }
-    .error-message {
-      background-color: #ffcccc;
-      padding: 10px;
-      border: 1px solid #ff0000;
-      border-radius: 5px;
-      font-size: 14px;
-    }
-    #legend, #polygon-legend {
-      position: absolute;
-      font-family: Arial, sans-serif;
-      font-size: 12px;
-      z-index: 900;
-    }
-    .legend-item, .polygon-legend-item {
-      display: flex;
-      align-items: center;
-      margin-bottom: 5px;
-    }
-    .legend-shape, .polygon-legend-shape {
-      width: 20px;
-      height: 20px;
-      margin-right: 8px;
-      display: inline-block;
-      border: 1px dashed black;
-    }
-    .legend-shape.line {
-      width: 40px;
-      height: 3px;
-    }
-    .legend-shape.circle {
-      border-radius: 50%;
-    }
-    .legend-title, .polygon-legend-title {
-      font-weight: bold;
-      margin-bottom: 8px;
-    }
-    .leaflet-control-geocoder {
-      z-index: 1000;
-      background: white;
-      border-radius: 5px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.2);
-      padding: 5px;
-    }
-    .layer-toggle {
-      background: white;
-      border-radius: 5px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.2);
-      padding: 5px;
-      font-family: Arial, sans-serif;
-      font-size: 12px;
-    }
-  </style>
+        #yishuvim-panel,#compare-panel{position:absolute;width:480px;background:white;border-radius:18px;box-shadow:0 15px 45px rgba(0,0,0,0.32);z-index:2000;padding:20px;display:none;max-height:84vh;overflow-y:auto}
+        #yishuvim-panel{top:60px;right:12px}
+        #compare-panel{top:200px;left:12px}
+        #yishuvim-panel h3,#compare-panel h3{margin:0 0 16px;text-align:center;color:#1976d2;font-size:19px;font-weight:bold}
+        #yishuvim-table,#compare-table{width:100%;border-collapse:collapse;font-size:15px}
+        #yishuvim-table th,#yishuvim-table td,#compare-table th,#compare-table td{padding:12px 10px;text-align:center;border-bottom:1px solid #eee}
+        #yishuvim-table th,#compare-table th{background:#1976d2;color:white;font-weight:bold}
+        #compare-table tr:nth-child(even){background:#f8fdff}
+
+        .close-yishuvim,.close-compare{float:left;cursor:pointer;font-size:28px;color:#999;line-height:1}
+        .close-yishuvim:hover,.close-compare:hover{color:#d32f2f}
+        .refresh-btn{background:#4caf50;color:white;padding:9px 18px;border-radius:10px;cursor:pointer;font-size:14.5px;font-weight:bold;margin-left:12px}
+        .refresh-btn:hover{background:#43a047}
+
+        .action-buttons{position:absolute;top:140px;left:12px;z-index:1000;display:flex;gap:12px;flex-direction:column;opacity:0;pointer-events:none;transition:opacity .4s}
+        .action-buttons.visible{opacity:1;pointer-events:auto}
+        #compare-btn,#clear-selection-btn{background:#1976d2;color:white;padding:14px 20px;border-radius:14px;box-shadow:0 6px 20px rgba(0,0,0,0.25);font-weight:bold;cursor:pointer;transition:all .3s;text-align:center;min-width:120px;font-size:15.5px}
+        #compare-btn:hover,#clear-selection-btn:hover{background:#1565c0}
+        #clear-selection-btn{background:#d32f2f}
+        #clear-selection-btn:hover{background:#b71c1c}
+
+        /* פופ-אפ קטן ומושלם */
+        .leaflet-popup-content-wrapper{
+            background:#ffffff!important;
+            border-radius:12px!important;
+            box-shadow:0 7px 20px rgba(0,0,0,0.28)!important;
+            padding:0!important;
+            border:2px solid #1976d2;
+            min-width:230px!important;
+            max-width:270px!important;
+        }
+        .leaflet-popup-content{
+            margin:11px 15px!important;
+            line-height:1.75!important;
+            font-size:14px!important;
+            text-align:right;
+        }
+        .popup-row{
+            display:flex;
+            justify-content:space-between;
+            padding:2.5px 0;
+        }
+        .popup-label{
+            font-weight:700;
+            color:#1565c0;
+            min-width:92px;
+            font-size:13.8px;
+        }
+        .popup-value{
+            font-weight:600;
+            color:#111;
+            text-align:left;
+        }
+        .popup-value strong{
+            color:#1976d2;
+            font-size:15px;
+        }
+
+        .info.legend{background:white;padding:16px 20px;border-radius:12px;box-shadow:0 0 25px rgba(0,0,0,0.3);font-size:15px;line-height:1.7;direction:rtl;text-align:right}
+        .legend-item{display:flex;align-items:center;justify-content:space-between;margin:7px 0;font-weight:600}
+        .legend-color{width:28px;height:28px;border-radius:8px;border:3px solid #000;box-shadow:0 2px 6px rgba(0,0,0,0.4)}
+        .reverse-btn{background:#1976d2;color:white;padding:12px 24px;border-radius:10px;font-size:15px;cursor:pointer;margin-top:16px;display:block;box-shadow:0 4px 14px rgba(0,0,0,0.3);text-align:center;transition:all .3s;font-weight:bold}
+        .reverse-btn.reversed{background:#2e7d32}
+    </style>
 </head>
 <body>
+<div class="title">ספירת נוסעים – גוש דן</div>
 <div id="map"></div>
+<div class="loading" id="loading">טוען נתונים...</div>
 
+<div class="time-tabs">
+    <button class="time-btn active" data-file="2025-10-20_0730_0800_gushdan.geojson">07:30–08:00</button>
+    <button class="time-btn" data-file="2025-10-20_1100_1130_gushdan.geojson">11:00–11:30</button>
+    <button class="time-btn" data-file="2025-10-20_1700_1730_gushdan.geojson">17:00–17:30</button>
+    <button class="time-btn" data-file="2025-10-20_2000_2030_gushdan.geojson">20:00–20:30</button>
+</div>
+
+<div class="side-panel-btns">
+    <div class="side-btn" id="show-yishuvim">ממוצעים לפי יישובים</div>
+</div>
+
+<div class="action-buttons" id="action-buttons">
+    <div id="compare-btn">השוואת זמנים</div>
+    <div id="clear-selection-btn">נקה בחירה</div>
+</div>
+
+<!-- טבלת יישובים -->
+<div id="yishuvim-panel">
+    <div style="margin-bottom:12px;position:relative;">
+        <span class="close-yishuvim">×</span>
+        <button class="refresh-btn" id="refresh-yishuvim">רענון</button>
+        <h3>ממוצעים לפי יישוב – <span id="yishuvim-time"></span></h3>
+    </div>
+    <table id="yishuvim-table">
+        <thead><tr><th>יישוב</th><th>נוסעים</th><th>נסיעות עם ספירה</th><th>נסיעות בפועל</th><th>יחס ביצוע</th></tr></thead>
+        <tbody></tbody>
+    </table>
+</div>
+
+<!-- טבלת השוואת זמנים -->
+<div id="compare-panel">
+    <div style="margin-bottom:12px;position:relative;">
+        <span class="close-compare">×</span>
+        <button class="refresh-btn" id="refresh-compare">רענון</button>
+        <h3>השוואת זמנים – קטעים נבחרים (<span id="selected-count">0</span>)</h3>
+    </div>
+    <table id="compare-table">
+        <thead><tr><th>שעה</th><th>נוסעים</th><th>נסיעות עם ספירה</th><th>נסיעות בפועל</th><th>יחס ביצוע</th></tr></thead>
+        <tbody></tbody>
+    </table>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-  // Initialize the map
-  const map = L.map('map').setView([31.9, 34.88], 10);
+    const map = L.map('map', {center: [32.0853, 34.7818], zoom: 12});
+    const loading = document.getElementById('loading');
+    const baseUrl = 'https://raw.githubusercontent.com/jonathandell27/my-geo-data/main/';
+    const layers = {}, segmentData = {}, selected = new Set(), yishuvimData = {};
+    let currentLayer = null, currentFile = null, legend = null, zoom = -1, reversed = false, first = true;
 
-  // Create custom panes for layer ordering
-  map.createPane('polygonsPane');
-  map.getPane('polygonsPane').style.zIndex = 400;
-  map.createPane('linesPane');
-  map.getPane('linesPane').style.zIndex = 450;
-  map.createPane('pointsPane');
-  map.getPane('pointsPane').style.zIndex = 500;
+    const times = {
+        "2025-10-20_0730_0800_gushdan.geojson": "07:30–08:00",
+        "2025-10-20_1100_1130_gushdan.geojson": "11:00–11:30",
+        "2025-10-20_1700_1730_gushdan.geojson": "17:00–17:30",
+        "2025-10-20_2000_2030_gushdan.geojson": "20:00–20:30"
+    };
 
-  // Add base layers
-  const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '© OpenStreetMap contributors'
-  });
-  const googleLayer = L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
-    maxZoom: 20,
-    subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
-    attribution: '© Google Maps'
-  });
-  const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-    attribution: '© Esri, Maxar, GeoEye, Earthstar Geographics'
-  });
-  const govmapLayer = L.tileLayer('https://cdnil.govmap.gov.il/xyz/heb/{z}/{x}/{y}.png', {
-    attribution: '© Govmap Israel',
-    maxZoom: 18
-  });
-  osmLayer.addTo(map); // Default base layer
+    const colors = ['#2c7bb6','#00a6ca','#00ccbc','#90eb9d','#f9d057','#f29e2e','#e76818','#d7191c','#a50026','#6a0026'];
 
-  const baseLayers = {
-    'OpenStreetMap': osmLayer,
-    'Google Maps': googleLayer,
-    'מפת לוויין': satelliteLayer,
-    'Govmap': govmapLayer
-  };
-  L.control.layers(baseLayers, null, { position: 'topright' }).addTo(map);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {attribution: '© OpenStreetMap'}).addTo(map);
 
-  // Add PolylineMeasure control
-  L.control.polylineMeasure({
-    position: 'topleft',
-    unit: 'metres',
-    showBearings: false,
-    clearMeasurementsOnStop: false,
-    showClearControl: true,
-    showUnitControl: false
-  }).addTo(map);
-
-  // Add Geocoder control
-  L.Control.geocoder({
-    defaultMarkGeocode: true,
-    geocoder: L.Control.Geocoder.photon()
-  }).addTo(map).on('markgeocode', function(e) {
-    map.setView(e.geocode.center, 12);
-  });
-
-  // Function to get URL parameter
-  function getURLParameter(name) {
-    const params = new URLSearchParams(window.location.search);
-    const value = params.get(name);
-    if ((name === 'yishuv_cd' || name === 'Stationid') && value && value !== 'ALL' && value !== '') {
-      return value.split(',').map(Number).filter(n => !isNaN(n));
+    function getSegmentId(f) {
+        const p = f.properties;
+        if (p.from_junction != null && p.to_junction != null) return `${p.from_junction}_-_${p.to_junction}`;
+        const c = f.geometry.coordinates;
+        const n = x => typeof x === 'number' ? x : parseFloat(x) || 0;
+        return `g_${n(c[0][0]).toFixed(5)}_${n(c[0][1]).toFixed(5)}_${n(c[c.length-1][0]).toFixed(5)}_${n(c[c.length-1][1]).toFixed(5)}`;
     }
-    return value;
-  }
 
-  // Create a control for error messages
-  const errorControl = L.control({ position: 'topright' });
-  errorControl.onAdd = function (map) {
-    this._div = L.DomUtil.create('div', 'error-message');
-    this._div.style.display = 'none';
-    return this._div;
-  };
-  errorControl.addTo(map);
+    Object.keys(times).forEach(file => {
+        fetch(baseUrl + file)
+            .then(r => r.json())
+            .then(data => {
+                const layer = L.geoJSON(data, {
+                    style: {weight: 7, color: '#3388ff'},
+                    onEachFeature: (f, l) => {
+                        const p = f.properties;
+                        const passengers = Number(p.total_passengers) || 0;
+                        const tripsWithCount = Number(p.pc_trips) || 0;
+                        const actualTrips = Number(p.real_trips) || 0;
+                        const ratio = actualTrips > 0 ? (tripsWithCount / actualTrips * 100).toFixed(1) : 0;
+                        const segId = getSegmentId(f);
+                        const yishuv = p.SHEM_YISHUV ? String(p.SHEM_YISHUV).trim() : "לא ידוע";
 
-  // Function to show error message
-  function showError(message) {
-    errorControl._div.innerHTML = message;
-    errorControl._div.style.display = 'block';
-  }
+                        if (!segmentData[segId]) segmentData[segId] = {};
+                        segmentData[segId][file] = {passengers, plannedTrips: tripsWithCount, actualTrips};
 
-  // Function to hide error message
-  function hideError() {
-    errorControl._div.style.display = 'none';
-  }
+                        if (!yishuvimData[file]) yishuvimData[file] = {};
+                        if (!yishuvimData[file][yishuv]) yishuvimData[file][yishuv] = {p:0, t:0, a:0, count:0};
+                        yishuvimData[file][yishuv].p += passengers;
+                        yishuvimData[file][yishuv].t += tripsWithCount;
+                        yishuvimData[file][yishuv].a += actualTrips;
+                        yishuvimData[file][yishuv].count += 1;
 
-  // Create layer groups
-  const serviceAreaLayer = L.layerGroup();
-  const longPathLayer = L.layerGroup();
-  const shortPathLayer = L.layerGroup();
-  const stationsLayer = L.layerGroup();
+                        l._segmentId = segId;
 
-  // Define colors for polygons
-  const colors = [
-    '#FFFF00', '#00FF00', '#FFA500', '#00CED1', '#FFD700', '#ADFF2F', '#1E90FF',
-    '#FF69B4', '#32CD32', '#8A2BE2', '#FF4500', '#20B2AA', '#98FB98', '#6A5ACD',
-    '#DC143C', '#2E8B57', '#CD5C5C'
-  ];
+                        l.bindPopup(`
+                            <div class="popup-row"><span class="popup-label">נוסעים:</span><span class="popup-value">${passengers.toLocaleString()}</span></div>
+                            <div class="popup-row"><span class="popup-label">נסיעות ספירה:</span><span class="popup-value">${tripsWithCount}</span></div>
+                            <div class="popup-row"><span class="popup-label">נסיעות בפועל:</span><span class="popup-value">${actualTrips}</span></div>
+                            <div class="popup-row"><span class="popup-label">יחס ביצוע:</span><span class="popup-value"><strong>${ratio}%</strong></span></div>
+                            <div class="popup-row"><span class="popup-label">מזהה מקטע:</span><span class="popup-value">${p.segment_id_3 ?? '—'}</span></div>
+                            <div class="popup-row"><span class="popup-label">יישוב:</span><span class="popup-value">${yishuv}</span></div>
+                            <div class="popup-row"><span class="popup-label">אזור סטטיסטי:</span><span class="popup-value">${p.YISHUV_STAT_2022 ?? '—'}</span></div>
+                        `, {autoClose:false, closeOnClick:false, maxWidth: 300});
 
-  // Fetch and display GeoJSON data
-  fetch('https://jonathandell27.github.io/my-geo-data/Station_Service.geojson')
-    .then(response => response.json())
-    .then(data => {
-      const yishuvCdFilter = getURLParameter('yishuv_cd');
-      const stationIdFilter = getURLParameter('Stationid');
-      const showAll = getURLParameter('showAll') === 'true';
+                        l.on('click', e => {
+                            if (selected.has(l)) {
+                                selected.delete(l);
+                                l.setStyle({color: l._color || '#3388ff', weight: 7});
+                            } else {
+                                selected.add(l);
+                                l.setStyle({color: '#00e5ff', weight: 11});
+                                l.bringToFront();
+                            }
+                            const n = selected.size;
+                            document.getElementById('action-buttons').classList.toggle('visible', n > 0);
+                            document.getElementById('compare-btn').innerHTML = n > 0 ? `השוואת זמנים<br><small>${n} נבחרו</small>` : 'השוואת זמנים';
+                            document.getElementById('selected-count').textContent = n;
+                            L.DomEvent.stopPropagation(e);
+                        });
+                    }
+                });
 
-      let filteredFeatures;
-      if (showAll || (yishuvCdFilter === 'ALL_VALUES' && stationIdFilter === 'ALL_VALUES') || (yishuvCdFilter == null && stationIdFilter == null)) {
-        filteredFeatures = data.features;
-      } else {
-        filteredFeatures = data.features.filter(feature => {
-          const matchesYishuv = yishuvCdFilter ? yishuvCdFilter.includes(Number(feature.properties.yishuv_cd)) : true;
-          const matchesStation = stationIdFilter ? stationIdFilter.includes(Number(feature.properties.Stationid)) : true;
-          return matchesYishuv && matchesStation;
-        });
-      }
-
-      console.log('Filtered features:', filteredFeatures.length, filteredFeatures);
-      console.log('yishuv_cd filter:', yishuvCdFilter, 'Stationid filter:', stationIdFilter);
-
-      // Calculate unique stations and settlements
-      const uniqueStationIds = [...new Set(filteredFeatures.map(f => f.properties.Stationid))];
-      const uniqueSetlNames = [...new Set(filteredFeatures.map(f => f.properties.SETL_NAME))].filter(name => name != null && name !== '');
-      const setlNameRank = {};
-      uniqueSetlNames.forEach((name, index) => {
-        setlNameRank[name] = index;
-      });
-      console.log('setlNames:', uniqueSetlNames, 'setlNameRank:', setlNameRank);
-
-      // Add GeoJSON layer
-      const geoJsonLayer = L.geoJSON(filteredFeatures, {
-        onEachFeature: function (feature, layer) {
-          const props = feature.properties;
-          layer.bindPopup(
-            `<b>מספר תחנה: ${props.Stationid || 'לא זמין'}</b><br>` +
-            `יישוב משויך: ${props.yishuv_nm || 'לא זמין'}<br>` +
-            `יישוב משורת: ${props.SETL_NAME || 'לא זמין'}<br>` +
-            `אורך דרך ארוכה: ${Number(props.Longest).toFixed(2)}<br>` +
-            `אורך דרך קצרה: ${Number(props.Shortest).toFixed(2)}`
-          );
-
-          const pathType = props.path;
-          console.log('Feature path:', pathType, 'Geometry:', feature.geometry.type);
-          if (feature.geometry.type === 'Polygon' && pathType === 'Service Area') {
-            layer.options.pane = 'polygonsPane';
-            layer.addTo(serviceAreaLayer);
-          } else if ((feature.geometry.type === 'LineString' || feature.geometry.type === 'MultiLineString') && pathType === 'Short') {
-            layer.options.pane = 'linesPane';
-            layer.addTo(shortPathLayer);
-          } else if ((feature.geometry.type === 'LineString' || feature.geometry.type === 'MultiLineString') && pathType === 'Long') {
-            layer.options.pane = 'linesPane';
-            layer.addTo(longPathLayer);
-          }
-        },
-        style: function (feature) {
-          const pathType = feature.properties.path;
-          const setlName = feature.properties.SETL_NAME;
-          if (feature.geometry.type === 'Polygon' && pathType === 'Service Area') {
-            const rank = setlNameRank[setlName] || 0;
-            const colorIndex = rank % colors.length;
-            return {
-              color: 'black',
-              weight: 0,
-              dashArray: '5, 5',
-              fillColor: colors[colorIndex],
-              fillOpacity: 0.8
-            };
-          } else if (feature.geometry.type === 'LineString' || feature.geometry.type === 'MultiLineString') {
-            if (pathType === 'Short') {
-              return {
-                color: '#FF0000', // Red
-                weight: 3,
-                opacity: 1,
-                dashArray: '5, 10'
-              };
-            } else if (pathType === 'Long') {
-              return {
-                color: '#0000FF', // Blue
-                weight: 3,
-                opacity: 1,
-                dashArray: '5, 10'
-              };
-            }
-            return {
-              color: '#808080', // Gray
-              weight: 3,
-              opacity: 0.5,
-              dashArray: '5, 10'
-            };
-          }
-        }
-      });
-
-      // Create points layer
-      filteredFeatures.forEach(feature => {
-        const props = feature.properties;
-        if (props.LatDifferrent != null && props.LongDifferrent != null && !isNaN(Number(props.LatDifferrent)) && !isNaN(Number(props.LongDifferrent))) {
-          const lat = Number(props.LatDifferrent);
-          const lon = Number(props.LongDifferrent);
-          console.log('Creating point for Stationid:', props.Stationid, 'Lat:', lat, 'Lon:', lon);
-          const pointLayer = L.circleMarker([lat, lon], {
-            radius: 6,
-            fillColor: '#800080', // Purple
-            color: 'black',
-            weight: 2,
-            fillOpacity: 0.7,
-            pane: 'pointsPane'
-          }).bindPopup(
-            `<b>מספר תחנה: ${props.Stationid || 'לא זמין'}</b><br>` +
-            `יישוב משויך: ${props.yishuv_nm || 'לא זמין'}<br>` +
-            `יישוב משורת: ${props.SETL_NAME || 'לא זמין'}<br>` +
-            `אורך דרך ארוכה: ${Number(props.Longest).toFixed(2)}<br>` +
-            `אורך דרך קצרה: ${Number(props.Shortest).toFixed(2)}`
-          );
-          pointLayer.addTo(stationsLayer);
-        } else {
-          console.warn('Invalid coordinates for Stationid:', props.Stationid, 'Lat:', props.LatDifferrent, 'Lon:', props.LongDifferrent);
-        }
-      });
-
-      // Calculate bounds
-      let bounds = L.latLngBounds();
-      geoJsonLayer.eachLayer(layer => {
-        if (layer instanceof L.Polygon || layer instanceof L.Polyline) {
-          bounds.extend(layer.getBounds());
-        }
-      });
-      stationsLayer.eachLayer(layer => {
-        if (layer instanceof L.CircleMarker) {
-          bounds.extend(layer.getLatLng());
-        }
-      });
-
-      // Add layer groups to map
-      serviceAreaLayer.addTo(map);
-      longPathLayer.addTo(map);
-      shortPathLayer.addTo(map);
-      stationsLayer.addTo(map);
-
-      // Add layer toggle control
-      const layersToggle = L.control({ position: 'topright' });
-      layersToggle.onAdd = function(map) {
-        const div = L.DomUtil.create('div', 'layer-toggle');
-        const checkboxes = [
-          { layer: 'Service Area', text: 'אזור שירות' },
-          { layer: 'Long', text: 'דרך ארוכה' },
-          { layer: 'Short', text: 'דרך קצרה' },
-          { layer: 'Stations', text: 'תחנות' }
-        ];
-        checkboxes.forEach(function(item) {
-          const checkbox = document.createElement('input');
-          checkbox.type = 'checkbox';
-          checkbox.checked = true;
-          checkbox.onchange = function() {
-            const layerGroup = {
-              'Service Area': serviceAreaLayer,
-              'Long': longPathLayer,
-              'Short': shortPathLayer,
-              'Stations': stationsLayer
-            }[item.layer];
-            if (this.checked) {
-              if (!map.hasLayer(layerGroup)) {
-                layerGroup.addTo(map);
-              }
-            } else {
-              if (map.hasLayer(layerGroup)) {
-                map.removeLayer(layerGroup);
-              }
-            }
-          };
-          const text = document.createTextNode(item.text);
-          div.appendChild(checkbox);
-          div.appendChild(text);
-          div.appendChild(document.createElement('br'));
-        });
-        return div;
-      };
-      layersToggle.addTo(map);
-
-      // Add main legend
-      const legend = L.control({ position: 'bottomright' });
-      legend.onAdd = function(map) {
-        const div = L.DomUtil.create('div', 'legend');
-        div.style.backgroundColor = 'white';
-        div.style.padding = '6px 10px';
-        const title = document.createElement('div');
-        title.className = 'legend-title';
-        title.innerText = `מציג: ${uniqueStationIds.length} תחנות`;
-        div.appendChild(title);
-        const items = [
-          { shape: 'rectangle', fillColor: 'transparent', opacity: 1, label: 'אזור שירות' },
-          { shape: 'line', color: '#0000FF', weight: 3, label: 'דרך ארוכה' },
-          { shape: 'line', color: '#FF0000', weight: 3, label: 'דרך קצרה' },
-          { shape: 'circle', fillColor: '#800080', weight: 2, label: 'תחנות' }
-        ];
-        items.forEach(function(item) {
-          const row = document.createElement('div');
-          row.className = 'legend-item';
-          const colorBox = document.createElement('span');
-          colorBox.className = 'legend-shape';
-          if (item.shape === 'circle') {
-            colorBox.className += ' circle';
-            colorBox.style.backgroundColor = item.fillColor;
-            colorBox.style.border = `${item.weight}px solid black`;
-          } else if (item.shape === 'line') {
-            colorBox.className += ' line';
-            colorBox.style.backgroundColor = item.color;
-            colorBox.style.border = `${item.weight}px solid ${item.color}`;
-          } else {
-            colorBox.style.backgroundColor = item.fillColor;
-            colorBox.style.opacity = item.opacity;
-            colorBox.style.border = '1px dashed black';
-          }
-          const text = document.createTextNode(item.label);
-          row.appendChild(colorBox);
-          row.appendChild(text);
-          div.appendChild(row);
-        });
-        return div;
-      };
-      legend.addTo(map);
-
-      // Add polygon legend
-      const polygonLegend = L.control({ position: 'bottomleft' });
-      polygonLegend.onAdd = function(map) {
-        const div = L.DomUtil.create('div', 'polygon-legend');
-        div.style.backgroundColor = 'white';
-        div.style.padding = '6px 10px';
-        const title = document.createElement('div');
-        title.className = 'polygon-legend-title';
-        title.innerText = 'אזורי שירות';
-        div.appendChild(title);
-        const note = document.createElement('div');
-        note.innerText = 'מציג עד 10 יישובים';
-        div.appendChild(note);
-        if (uniqueSetlNames.length > 0) {
-          uniqueSetlNames.slice(0, 10).forEach(function(setlName) {
-            const rank = setlNameRank[setlName];
-            const colorIndex = rank % colors.length;
-            console.log('Polygon legend:', setlName, 'rank:', rank, 'color:', colors[colorIndex]);
-            const row = document.createElement('div');
-            row.className = 'polygon-legend-item';
-            const colorBox = document.createElement('span');
-            colorBox.className = 'polygon-legend-shape';
-            colorBox.style.backgroundColor = colors[colorIndex];
-            const text = document.createTextNode(setlName);
-            row.appendChild(colorBox);
-            row.appendChild(text);
-            div.appendChild(row);
-          });
-        } else {
-          div.innerHTML += '<div>אין יישובים זמינים</div>';
-        }
-        return div;
-      };
-      polygonLegend.addTo(map);
-
-      // Focus on displayed features
-      if (filteredFeatures.length > 0 && bounds.isValid()) {
-        map.fitBounds(bounds, { padding: [50, 50] });
-        console.log('Focusing on bounds:', bounds.toBBoxString());
-        hideError();
-      } else {
-        console.warn('No features to display or invalid bounds');
-        showError('לא נמצאו ישויות התואמות לקוד שהוזן');
-        map.setView([31.9, 34.88], 10);
-      }
-    })
-    .catch(error => {
-      console.error('Error loading GeoJSON:', error);
-      showError('שגיאה בטעינת נתוני GeoJSON');
-      map.setView([31.9, 34.88], 10);
+                layers[file] = layer;
+                if (Object.keys(layers).length === 4) {
+                    loading.style.display = 'none';
+                    showLayer(Object.keys(times)[0]);
+                }
+            });
     });
+
+    function showLayer(file) {
+        if (currentLayer) map.removeLayer(currentLayer);
+        selected.clear();
+        document.getElementById('action-buttons').classList.remove('visible');
+        document.getElementById('compare-btn').innerHTML = 'השוואת זמנים';
+        document.getElementById('selected-count').textContent = '0';
+        currentFile = file;
+        currentLayer = layers[file];
+        currentLayer.addTo(map);
+        document.querySelectorAll('.time-btn').forEach(b => b.classList.toggle('active', b.dataset.file === file));
+        if (first) { map.fitBounds(currentLayer.getBounds().pad(0.2), {maxZoom:15}); first = false; }
+        zoom = -1;
+        updateLegend();
+    }
+
+    function updateLegend() {
+        if (!currentLayer || map.getZoom() === zoom) return;
+        zoom = map.getZoom();
+        const vals = [];
+        currentLayer.eachLayer(l => {
+            if (map.getBounds().intersects(l.getBounds())) vals.push(Number(l.feature.properties.total_passengers) || 0);
+        });
+        const max = Math.max(...vals, 1);
+        const step = max / 10;
+
+        currentLayer.eachLayer(l => {
+            const v = Number(l.feature.properties.total_passengers) || 0;
+            const c = colors[Math.min(Math.floor(v / step), 9)];
+            l._color = c;
+            if (!selected.has(l)) l.setStyle({color: c, weight: 7});
+        });
+
+        if (legend) map.removeControl(legend);
+        legend = L.control({position: 'bottomleft'});
+        legend.onAdd = () => {
+            const div = L.DomUtil.create('div', 'info legend');
+            let html = '<div style="font-weight:bold;text-align:center;margin-bottom:8px;color:#1976d2;font-size:16px">נוסעים במקטע</div>';
+            for (let i = 9; i >= 0; i--) {
+                const from = Math.round(i * step);
+                const to = Math.round((i + 1) * step);
+                const label = i === 9 ? from.toLocaleString() + '+' : from.toLocaleString() + '–' + to.toLocaleString();
+                html += `<div class="legend-item"><span>${label}</span><i class="legend-color" style="background:${colors[i]}"></i></div>`;
+            }
+            html += `<div class="${reversed ? 'reverse-btn reversed' : 'reverse-btn'}" id="revBtn">החלף סדר חפיפה</div>`;
+            div.innerHTML = html;
+            div.querySelector('#revBtn').onclick = () => {
+                reversed = !reversed;
+                div.querySelector('#revBtn').classList.toggle('reversed');
+                const arr = []; currentLayer.eachLayer(l => arr.push(l));
+                arr.forEach(l => map.removeLayer(l));
+                (reversed ? arr.reverse() : arr).forEach(l => map.addLayer(l));
+                selected.forEach(l => l.bringToFront());
+            };
+            return div;
+        };
+        legend.addTo(map);
+    }
+
+    function updateYishuvimTable() {
+        document.getElementById('yishuvim-time').textContent = times[currentFile];  // תוקן!
+        const tbody = document.querySelector('#yishuvim-table tbody');
+        const data = yishuvimData[currentFile] || {};
+        const sorted = Object.entries(data)
+            .map(([y, d]) => ({
+                y,
+                avgPass: Math.round(d.p / d.count),
+                avgT: (d.t / d.count).toFixed(1),
+                avgA: (d.a / d.count).toFixed(1),
+                ratio: d.a > 0 ? (d.t / d.a * 100).toFixed(1) : '0.0'
+            }))
+            .sort((a,b) => b.avgPass - a.avgPass);
+
+        tbody.innerHTML = sorted.map(o => `
+            <tr>
+                <td><strong>${o.y}</strong></td>
+                <td>${o.avgPass.toLocaleString()}</td>
+                <td>${o.avgT}</td>
+                <td>${o.avgA}</td>
+                <td><strong>${o.ratio}%</strong></td>
+            </tr>`).join('');
+    }
+
+    // אירועים
+    document.querySelectorAll('.time-btn').forEach(b => b.onclick = () => showLayer(b.dataset.file));
+    document.getElementById('show-yishuvim').onclick = () => { updateYishuvimTable(); document.getElementById('yishuvim-panel').style.display = 'block'; };
+    document.querySelector('.close-yishuvim').onclick = () => document.getElementById('yishuvim-panel').style.display = 'none';
+    document.getElementById('refresh-yishuvim').onclick = updateYishuvimTable;
+
+    document.getElementById('compare-btn').onclick = () => {
+        const tbody = document.querySelector('#compare-table tbody');
+        const totals = {};
+        Object.keys(times).forEach(f => totals[f] = {p:0, t:0, a:0});
+        selected.forEach(l => {
+            const id = l._segmentId;
+            if (segmentData[id]) {
+                Object.keys(times).forEach(file => {
+                    if (segmentData[id][file]) {
+                        const d = segmentData[id][file];
+                        totals[file].p += d.passengers;
+                        totals[file].t += d.plannedTrips;
+                        totals[file].a += d.actualTrips;
+                    }
+                });
+            }
+        });
+        tbody.innerHTML = '';
+        Object.keys(times).forEach(file => {
+            const ratio = totals[file].a > 0 ? (totals[file].t / totals[file].a * 100).toFixed(1) : '—';
+            tbody.innerHTML += `<tr><td><strong>${times[file]}</strong></td><td>${totals[file].p.toLocaleString()}</td><td>${totals[file].t.toLocaleString()}</td><td>${totals[file].a.toLocaleString()}</td><td><strong>${ratio}%</strong></td></tr>`;
+        });
+        document.getElementById('compare-panel').style.display = 'block';
+    };
+
+    document.getElementById('refresh-compare').onclick = () => document.getElementById('compare-btn').click();
+    document.getElementById('clear-selection-btn').onclick = () => {
+        selected.forEach(l => l.setStyle({color: l._color || '#3388ff', weight: 7}));
+        selected.clear();
+        document.getElementById('action-buttons').classList.remove('visible');
+        document.getElementById('compare-btn').innerHTML = 'השוואת זמנים';
+        document.getElementById('selected-count').textContent = '0';
+    };
+    document.querySelector('.close-compare').onclick = () => document.getElementById('compare-panel').style.display = 'none';
+    map.on('click', () => selected.size && document.getElementById('clear-selection-btn').click());
+    map.on('zoomend', updateLegend);
 </script>
 </body>
 </html>
