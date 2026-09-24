@@ -239,14 +239,21 @@ function addLegendControl() {
   });
 }
 
-// שליפת GeoJSON בפורמט WGS84
+// שליפת GeoJSON בפורמט WGS84 בצורה בטוחה משרת העירייה
 async function fetchEsriGeoJSON(url) {
   return new Promise((resolve, reject) => {
     L.esri.query({ url: url })
       .where('1=1')
+      .precision(5) // מונע עומס על תגובת השרת
       .run((error, featureCollection) => {
-        if (error) reject(error);
-        else resolve(featureCollection);
+        if (error) {
+          console.error("Esri Query Error:", error);
+          reject(new Error(error.message || "שגיאה בשליפת הנתונים משרת ה-GIS"));
+        } else if (!featureCollection || !featureCollection.features) {
+          reject(new Error("התקבלה תשובה ריקה מהשרת"));
+        } else {
+          resolve(featureCollection);
+        }
       });
   });
 }
