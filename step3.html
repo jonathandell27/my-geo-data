@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>MapLibre GL – פרופיילר ביצועים מדורג (20 שכבות)</title>
+  <title>MapLibre – בדיקת ביצועים</title>
 
   <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
@@ -12,1026 +12,988 @@
   <style>
     :root {
       --primary: #1b365d;
-      --primary-hover: #2c5282;
       --good: #16a34a;
       --warn: #d97706;
       --bad: #dc2626;
-      --bg: #f4f6f8;
-      --card: #ffffff;
-      --text: #222;
+      --bg: #f1f5f9;
+      --card: #fff;
+      --border: #e2e8f0;
       --muted: #64748b;
+      --side-w: 420px;
     }
-    * { box-sizing: border-box; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; overflow: hidden; }
     body {
       font-family: "Segoe UI", system-ui, Arial, sans-serif;
-      margin: 0;
       background: var(--bg);
-      color: var(--text);
-      line-height: 1.45;
+      color: #1e293b;
+      font-size: 14px;
     }
-    header {
-      background: var(--primary);
-      color: #fff;
-      padding: 16px 20px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.18);
-    }
-    header h1 { margin: 0; font-size: 1.35rem; font-weight: 700; }
-    header p { margin: 6px 0 0; font-size: 0.88rem; color: #cbd5e1; }
-    main { padding: 16px; max-width: 1480px; margin: 0 auto; }
 
-    .card {
-      background: var(--card);
-      border-radius: 12px;
-      box-shadow: 0 2px 12px rgba(0,0,0,.07);
-      padding: 18px;
-      margin-bottom: 16px;
-    }
-    .card h3 {
-      margin: 0 0 12px;
-      font-size: 1.05rem;
+    /* ===== INTRO ===== */
+    #intro {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      background: linear-gradient(160deg, #0f172a 0%, #1b365d 55%, #1e3a5f 100%);
+      color: #e2e8f0;
       display: flex;
       align-items: center;
-      gap: 8px;
+      justify-content: center;
+      padding: 20px;
+      overflow-y: auto;
     }
-    .step-badge {
-      background: var(--primary);
+    .intro-box {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 16px;
+      padding: 26px 30px;
+      max-width: 680px;
+      width: 100%;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+    }
+    .intro-box h1 {
+      font-size: 1.25rem;
+      font-weight: 800;
       color: #fff;
-      font-size: 0.75rem;
-      font-weight: 700;
-      padding: 2px 8px;
-      border-radius: 999px;
-      min-width: 22px;
-      text-align: center;
+      margin-bottom: 4px;
     }
+    .intro-box .sub {
+      font-size: 0.82rem;
+      color: #94a3b8;
+      margin-bottom: 16px;
+    }
+    .intro-q {
+      background: rgba(255,255,255,0.07);
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-bottom: 16px;
+      border-right: 4px solid #38bdf8;
+    }
+    .intro-q p {
+      font-size: 0.88rem;
+      line-height: 1.55;
+      color: #cbd5e1;
+    }
+    .intro-q strong { color: #f8fafc; }
 
-    .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-    button {
-      background: var(--primary);
+    .intro-section { margin-bottom: 14px; }
+    .intro-section h2 {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #7dd3fc;
+      margin-bottom: 5px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .intro-section h2 span {
+      background: #0ea5e9;
+      color: #fff;
+      font-size: 0.68rem;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .intro-section li {
+      font-size: 0.82rem;
+      line-height: 1.5;
+      color: #cbd5e1;
+      margin-bottom: 2px;
+    }
+    .intro-section ul { padding-right: 16px; margin-top: 3px; }
+
+    .intro-btn {
+      display: block;
+      width: 100%;
+      margin-top: 18px;
+      background: #0ea5e9;
       color: #fff;
       border: 0;
-      border-radius: 8px;
-      padding: 10px 16px;
-      cursor: pointer;
-      font-size: 13px;
-      font-weight: 600;
-      transition: background 0.15s, transform 0.1s;
-    }
-    button:hover:not(:disabled) { background: var(--primary-hover); }
-    button:active:not(:disabled) { transform: scale(0.98); }
-    button:disabled { opacity: 0.45; cursor: not-allowed; }
-    button.secondary { background: #27ae60; }
-    button.secondary:hover:not(:disabled) { background: #219150; }
-    button.warning { background: #d97706; }
-    button.warning:hover:not(:disabled) { background: #b45309; }
-    button.danger { background: #dc2626; }
-    button.danger:hover:not(:disabled) { background: #b91c1c; }
-    button.info { background: #0ea5e9; }
-    button.info:hover:not(:disabled) { background: #0284c7; }
-
-    .metrics-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-      gap: 10px;
-      margin-top: 8px;
-    }
-    .metric-box {
-      background: #f8fafc;
-      border: 1px solid #e2e8f0;
       border-radius: 10px;
-      padding: 12px 8px;
+      padding: 13px 18px;
+      font-size: 0.92rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
       text-align: center;
     }
-    .metric-value {
-      font-size: 1.35rem;
+    .intro-btn:hover { background: #0284c7; }
+    .intro-btn:active { transform: scale(0.98); }
+
+    /* ===== APP ===== */
+    .app {
+      display: none;
+      height: 100vh;
+      position: relative;
+    }
+    .app.visible { display: block; }
+
+    .side {
+      position: absolute;
+      top: 0; bottom: 0; right: 0;
+      width: var(--side-w);
+      display: flex;
+      flex-direction: column;
+      background: var(--card);
+      border-left: 1px solid var(--border);
+      overflow: hidden;
+      z-index: 2;
+    }
+    .side-header {
+      background: var(--primary);
+      color: #fff;
+      padding: 10px 12px;
+      flex-shrink: 0;
+    }
+    .side-header h1 { font-size: 0.92rem; font-weight: 700; }
+    .side-header p { font-size: 0.7rem; color: #94a3b8; margin-top: 1px; }
+
+    .side-scroll {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px;
+    }
+
+    /* Draggable divider */
+    .divider {
+      position: absolute;
+      top: 0; bottom: 0;
+      width: 6px;
+      cursor: col-resize;
+      z-index: 5;
+      background: transparent;
+      transition: background 0.15s;
+    }
+    .divider:hover, .divider.dragging {
+      background: #93c5fd;
+    }
+    .divider::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 1px;
+      transform: translateY(-50%);
+      width: 4px;
+      height: 40px;
+      border-radius: 2px;
+      background: #cbd5e1;
+    }
+    .divider:hover::after, .divider.dragging::after {
+      background: #3b82f6;
+    }
+
+    .map-wrap {
+      position: absolute;
+      top: 0; bottom: 0; left: 0;
+      right: var(--side-w);
+      background: #e2e8f0;
+    }
+    #map { width: 100%; height: 100%; }
+
+    .card {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      padding: 8px;
+      margin-bottom: 7px;
+    }
+    .card h3 {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 6px;
+    }
+    .badge {
+      background: var(--primary);
+      color: #fff;
+      font-size: 0.6rem;
+      font-weight: 700;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 4px;
+    }
+    .m-box {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 5px 2px;
+      text-align: center;
+    }
+    .m-val {
+      font-size: 1rem;
       font-weight: 800;
-      color: #0f172a;
-      margin-top: 4px;
       font-variant-numeric: tabular-nums;
     }
-    .metric-label {
-      font-size: 0.72rem;
+    .m-lbl {
+      font-size: 0.58rem;
       color: var(--muted);
       font-weight: 600;
       text-transform: uppercase;
-      letter-spacing: 0.02em;
     }
-    .status-good { color: var(--good) !important; }
-    .status-warn { color: var(--warn) !important; }
-    .status-bad  { color: var(--bad) !important; }
+    .good { color: var(--good) !important; }
+    .warn { color: var(--warn) !important; }
+    .bad  { color: var(--bad) !important; }
 
-    /* Scores */
-    .scores-grid {
+    .scores {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 10px;
-      margin-top: 10px;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px;
     }
-    .score-card {
-      background: linear-gradient(135deg, #f8fafc, #f1f5f9);
-      border: 1px solid #e2e8f0;
-      border-radius: 10px;
-      padding: 12px;
+    .s-box {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 5px;
       text-align: center;
     }
-    .score-card .score-num {
-      font-size: 1.8rem;
-      font-weight: 800;
-      line-height: 1.1;
-    }
-    .score-card .score-label {
-      font-size: 0.78rem;
-      color: var(--muted);
+    .s-num { font-size: 1.15rem; font-weight: 800; line-height: 1.1; }
+    .s-lbl { font-size: 0.6rem; color: var(--muted); font-weight: 600; }
+
+    button.action {
+      background: var(--primary);
+      color: #fff;
+      border: 0;
+      border-radius: 6px;
+      padding: 7px 8px;
+      cursor: pointer;
+      font-size: 11.5px;
       font-weight: 600;
-      margin-top: 2px;
+      width: 100%;
+      transition: opacity 0.15s;
     }
-    .score-card .score-detail {
-      font-size: 0.7rem;
-      color: #94a3b8;
-      margin-top: 4px;
+    button.action:hover:not(:disabled) { opacity: 0.9; }
+    button.action:disabled { opacity: 0.38; cursor: not-allowed; }
+    button.green { background: #16a34a; }
+    button.orange { background: #d97706; }
+    button.red { background: #dc2626; }
+    button.blue { background: #0ea5e9; }
+
+    .step {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 7px;
+      margin-bottom: 5px;
+      background: #fff;
+      opacity: 0.4;
+      pointer-events: none;
+      transition: opacity 0.2s;
+    }
+    .step.active {
+      opacity: 1;
+      pointer-events: auto;
+      border-color: #93c5fd;
+      box-shadow: 0 0 0 2px #dbeafe;
+    }
+    .step.done {
+      opacity: 1;
+      pointer-events: auto;
+      border-color: #86efac;
+    }
+    .step-title {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-weight: 700;
+      font-size: 0.78rem;
+      margin-bottom: 2px;
+    }
+    .step-desc {
+      font-size: 0.68rem;
+      color: var(--muted);
+      margin-bottom: 5px;
+      line-height: 1.35;
+    }
+    .step-status {
+      font-size: 0.65rem;
+      font-weight: 600;
+      color: var(--primary);
+      margin-top: 3px;
+      min-height: 13px;
     }
 
-    #map {
-      height: 520px;
-      border-radius: 10px;
-      border: 1px solid #cbd5e1;
-      position: relative;
-      overflow: hidden;
-    }
-    .map-overlay-panel {
+    .layers-panel {
       position: absolute;
-      top: 10px;
-      right: 10px;
+      top: 6px;
+      right: 6px;
       background: rgba(255,255,255,0.96);
-      padding: 12px;
-      border-radius: 10px;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-      font-size: 12px;
-      max-height: 460px;
+      border-radius: 8px;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.12);
+      padding: 7px;
+      width: 175px;
+      max-height: calc(100% - 12px);
       overflow-y: auto;
       z-index: 2;
-      width: 240px;
+      font-size: 10px;
     }
-    .map-overlay-panel h4 {
-      margin: 0 0 8px;
-      font-size: 13px;
-      border-bottom: 1px solid #e2e8f0;
-      padding-bottom: 6px;
+    .layers-panel h4 {
+      font-size: 10.5px;
+      margin-bottom: 4px;
+      padding-bottom: 3px;
+      border-bottom: 1px solid var(--border);
     }
-    .layer-item {
+    .layer-row {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      margin-bottom: 5px;
-      font-size: 11px;
-      gap: 6px;
+      gap: 3px;
+      margin-bottom: 2px;
     }
-    .layer-item label {
+    .layer-row label {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 3px;
       cursor: pointer;
       flex: 1;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
     }
-    .color-dot {
-      width: 10px;
-      height: 10px;
+    .dot {
+      width: 7px; height: 7px;
       border-radius: 50%;
       flex-shrink: 0;
     }
-    .layer-score {
-      font-size: 10px;
+    .l-score {
+      font-size: 9px;
       font-weight: 700;
-      min-width: 28px;
+      min-width: 22px;
       text-align: left;
     }
 
     #log {
       background: #0f172a;
-      color: #38bdf8;
-      font-family: "Cascadia Code", Consolas, monospace;
-      font-size: 12px;
-      height: 180px;
+      color: #7dd3fc;
+      font-family: Consolas, monospace;
+      font-size: 10px;
+      height: 80px;
       overflow-y: auto;
-      padding: 12px;
-      border-radius: 8px;
+      padding: 5px;
+      border-radius: 6px;
       white-space: pre-wrap;
-      line-height: 1.55;
+      line-height: 1.4;
     }
     .log-ok { color: #4ade80; }
     .log-warn { color: #fbbf24; }
     .log-bad { color: #f87171; }
-    .log-info { color: #60a5fa; }
 
-    .muted { color: var(--muted); font-size: 13px; }
-    .status-bar {
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--primary);
-      min-height: 20px;
+    #recs {
+      font-size: 0.68rem;
+      line-height: 1.4;
+      color: #334155;
     }
+    #recs ul { padding-right: 12px; margin: 0; }
+    #recs li { margin-bottom: 2px; }
 
-    .progress-steps {
-      display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
-      margin-bottom: 14px;
-    }
-    .progress-step {
-      font-size: 11px;
-      font-weight: 600;
-      padding: 4px 10px;
-      border-radius: 999px;
-      background: #e2e8f0;
-      color: #64748b;
-    }
-    .progress-step.done { background: #bbf7d0; color: #166534; }
-    .progress-step.active { background: #bfdbfe; color: #1e40af; }
-    .progress-step.locked { opacity: 0.5; }
-
-    .hint {
-      background: #eff6ff;
-      border: 1px solid #bfdbfe;
-      border-radius: 8px;
-      padding: 10px 12px;
-      font-size: 12.5px;
-      color: #1e40af;
-      margin-top: 10px;
-    }
-
-    details {
-      margin-top: 10px;
-      border: 1px solid #e2e8f0;
-      border-radius: 8px;
-      padding: 8px 12px;
-      background: #f8fafc;
-    }
-    details summary {
-      cursor: pointer;
-      font-weight: 600;
-      font-size: 13px;
-    }
+    .row-btns { display: flex; gap: 4px; }
+    .row-btns button { flex: 1; }
   </style>
 </head>
 <body>
 
-<header>
-  <h1>פרופיילר ביצועים מדורג – MapLibre GL JS</h1>
-  <p>עיריית תל אביב-יפו • 20 שכבות • בדיקות מהפשוט למורכב + ציונים אוטומטיים</p>
-</header>
+<!-- מסך פתיחה -->
+<div id="intro">
+  <div class="intro-box">
+    <h1>מפה עם 20 שכבות שרצה לאט</h1>
+    <p class="sub">איך מוצאים את הבעיה ומה אפשר לעשות</p>
 
-<main>
-  <!-- מדדי ביצועים חיים -->
-  <div class="card">
-    <h3>מדדי ביצועים בזמן אמת</h3>
-    <div class="metrics-grid">
-      <div class="metric-box">
-        <div class="metric-label">FPS</div>
-        <div id="metricFps" class="metric-value status-good">--</div>
-      </div>
-      <div class="metric-box">
-        <div class="metric-label">Frame Time</div>
-        <div id="metricFrameTime" class="metric-value">-- ms</div>
-      </div>
-      <div class="metric-box">
-        <div class="metric-label">Heap Memory</div>
-        <div id="metricMemory" class="metric-value">N/A</div>
-      </div>
-      <div class="metric-box">
-        <div class="metric-label">שכבות פעילות</div>
-        <div id="metricLayersCount" class="metric-value">0 / 20</div>
-      </div>
-      <div class="metric-box">
-        <div class="metric-label">סה״כ Features</div>
-        <div id="metricFeatures" class="metric-value">0</div>
-      </div>
-      <div class="metric-box">
-        <div class="metric-label">Time to Idle</div>
-        <div id="metricIdle" class="metric-value">--</div>
-      </div>
+    <div class="intro-q">
+      <p>
+        <strong>המצב:</strong> יש מפת MapLibre עם 20 שכבות, והמשתמשים מתלוננים שהיא כבדה.<br><br>
+        <strong>מה צריך:</strong> להבין איך לאתר את הבעיה, מה למדוד, ואיך לשפר.
+      </p>
+    </div>
+
+    <div class="intro-section">
+      <h2><span>1</span> איך מוצאים את הבעיה</h2>
+      <ul>
+        <li>קודם בודקים את המפה בלי שום שכבה – לראות מה המצב הבסיסי.</li>
+        <li>מוסיפים שכבות לאט לאט ורואים מתי זה מתחיל להאט.</li>
+        <li>בודקים גם כשעומדים וגם כשמזיזים את המפה.</li>
+        <li>מכבים שכבה-שכבה כדי לזהות מי הכבדה.</li>
+      </ul>
+    </div>
+
+    <div class="intro-section">
+      <h2><span>2</span> מה כדאי למדוד</h2>
+      <ul>
+        <li><strong>FPS</strong> – כמה פריימים בשנייה. מעל 50 זה טוב, מתחת ל-30 כבר מרגישים.</li>
+        <li><strong>זמן פריים</strong> – כמה מילישניות לוקח כל פריים. סביב 16ms זה חלק.</li>
+        <li><strong>זמן טעינה</strong> – כמה זמן עד שהמפה מתייצבת אחרי הוספת שכבות.</li>
+        <li><strong>זיכרון</strong> – אם הוא עולה כל הזמן, משהו דולף.</li>
+        <li><strong>מספר אלמנטים</strong> – כמה נקודות/קווים/פוליגונים יש בפועל.</li>
+      </ul>
+    </div>
+
+    <div class="intro-section">
+      <h2><span>3</span> מה אפשר לשפר</h2>
+      <ul>
+        <li>Clustering לנקודות – מחבר נקודות קרובות במקום לצייר אלפים.</li>
+        <li>פישוט צורות – פחות נקודות בכל קו או פוליגון.</li>
+        <li>הגבלת zoom – לא לצייר פרטים כשלא צריך.</li>
+        <li>פחות מקורות נתונים – עדיף מקור אחד חכם על פני עשרים.</li>
+        <li>אם יש ממש הרבה נתונים – לעבור ל-Vector Tiles.</li>
+      </ul>
+    </div>
+
+    <button class="intro-btn" id="btnStart">
+      בואו נבדוק על מפת עירייה ←
+    </button>
+  </div>
+</div>
+
+<!-- האפליקציה -->
+<div class="app" id="app">
+
+  <div class="map-wrap" id="mapWrap">
+    <div id="map"></div>
+    <div class="layers-panel">
+      <h4>שכבות</h4>
+      <div id="layersList"><span style="color:#94a3b8">טען שכבות בשלב 2</span></div>
     </div>
   </div>
 
-  <!-- ציונים מצטברים -->
-  <div class="card">
-    <h3>ציונים מצטברים (0–100)</h3>
-    <div class="scores-grid">
-      <div class="score-card">
-        <div id="scoreBaseline" class="score-num">—</div>
-        <div class="score-label">1. בסיס (Baseline)</div>
-        <div class="score-detail" id="scoreBaselineDetail">טרם בוצע</div>
-      </div>
-      <div class="score-card">
-        <div id="scoreLoad" class="score-num">—</div>
-        <div class="score-label">2. אחרי טעינת 20 שכבות</div>
-        <div class="score-detail" id="scoreLoadDetail">טרם בוצע</div>
-      </div>
-      <div class="score-card">
-        <div id="scoreCamera" class="score-num">—</div>
-        <div class="score-label">3. Camera Stress</div>
-        <div class="score-detail" id="scoreCameraDetail">טרם בוצע</div>
-      </div>
-      <div class="score-card">
-        <div id="scoreIsolation" class="score-num">—</div>
-        <div class="score-label">4. בידוד שכבות</div>
-        <div class="score-detail" id="scoreIsolationDetail">טרם בוצע</div>
-      </div>
-      <div class="score-card">
-        <div id="scoreOptimized" class="score-num">—</div>
-        <div class="score-label">5. אחרי אופטימיזציה</div>
-        <div class="score-detail" id="scoreOptimizedDetail">טרם בוצע</div>
-      </div>
-    </div>
-  </div>
+  <div class="divider" id="divider" title="גרור כדי לשנות גודל"></div>
 
-  <!-- שלבי בדיקה מדורגים -->
-  <div class="card">
-    <h3>שלבי בדיקה (מהפשוט → למורכב)</h3>
-
-    <div class="progress-steps" id="progressSteps">
-      <span class="progress-step active" data-step="1">1. בסיס</span>
-      <span class="progress-step locked" data-step="2">2. טעינת שכבות</span>
-      <span class="progress-step locked" data-step="3">3. Camera Stress</span>
-      <span class="progress-step locked" data-step="4">4. בידוד שכבות</span>
-      <span class="progress-step locked" data-step="5">5. אופטימיזציה</span>
+  <div class="side" id="side">
+    <div class="side-header">
+      <h1>בדיקת ביצועים</h1>
+      <p>20 שכבות • מהבסיס עד שיפור</p>
     </div>
 
-    <!-- שלב 1 -->
-    <div id="step1" class="step-panel">
-      <div class="row">
-        <span class="step-badge">1</span>
-        <strong>בדיקת בסיס (Baseline)</strong>
-        <button id="btnBaseline" class="secondary">הרץ בדיקת בסיס</button>
-        <span class="status-bar" id="statusStep1"></span>
-      </div>
-      <div class="hint">בודק את ביצועי המפה <strong>ללא שום שכבת נתונים</strong>. זהו קו הבסיס שאליו נשווה את כל השאר.</div>
-    </div>
+    <div class="side-scroll">
 
-    <!-- שלב 2 -->
-    <div id="step2" class="step-panel" style="margin-top:16px; opacity:0.5; pointer-events:none;">
-      <div class="row">
-        <span class="step-badge">2</span>
-        <strong>טעינת 20 שכבות GeoJSON</strong>
-        <button id="btnLoadLayers" disabled>טען 20 שכבות</button>
-        <button id="btnToggleAll" class="secondary" disabled>הסתר / הצג הכל</button>
-        <span class="status-bar" id="statusStep2"></span>
-      </div>
-      <div class="hint">יוצר 20 שכבות (נקודות / קווים / פוליגונים) עם עומס עולה. מודד את הירידה ב-FPS וב-Time-to-Idle.</div>
-    </div>
-
-    <!-- שלב 3 -->
-    <div id="step3" class="step-panel" style="margin-top:16px; opacity:0.5; pointer-events:none;">
-      <div class="row">
-        <span class="step-badge">3</span>
-        <strong>Camera Stress Test</strong>
-        <button id="btnStress" class="warning" disabled>הרץ בדיקת תנועה</button>
-        <span class="status-bar" id="statusStep3"></span>
-      </div>
-      <div class="hint">מבצע 4 מעברי מצלמה (flyTo) עם pitch ו-bearing. רושם את ה-FPS המינימלי במהלך התנועה – זה המדד הכי חשוב לחוויית משתמש.</div>
-    </div>
-
-    <!-- שלב 4 -->
-    <div id="step4" class="step-panel" style="margin-top:16px; opacity:0.5; pointer-events:none;">
-      <div class="row">
-        <span class="step-badge">4</span>
-        <strong>בידוד שכבות (Isolate)</strong>
-        <button id="btnIsolate" class="danger" disabled>הרץ בידוד שכבות</button>
-        <span class="status-bar" id="statusStep4"></span>
-      </div>
-      <div class="hint">מפעיל כל שכבה בנפרד ומודד זמן רינדור. מזהה את השכבות הכבדות ביותר ומעניק להן ציון כבדות.</div>
-    </div>
-
-    <!-- שלב 5 -->
-    <div id="step5" class="step-panel" style="margin-top:16px; opacity:0.5; pointer-events:none;">
-      <div class="row">
-        <span class="step-badge">5</span>
-        <strong>אופטימיזציה והשוואה</strong>
-        <button id="btnOptimize" class="info" disabled>החל Clustering + Simplify</button>
-        <span class="status-bar" id="statusStep5"></span>
-      </div>
-      <div class="hint">
-        מחיל Clustering על שכבות נקודות + פישוט גיאומטריות (turf.simplify) על קווים ופוליגונים,
-        ואז מודד מחדש את הביצועים ומשווה לציון הקודם.
-      </div>
-    </div>
-  </div>
-
-  <!-- מפה -->
-  <div class="card">
-    <h3>מפת MapLibre GL</h3>
-    <div id="map">
-      <div class="map-overlay-panel">
-        <h4>20 שכבות מפה</h4>
-        <div id="layersList">
-          <span class="muted">טען שכבות בשלב 2</span>
+      <div class="card">
+        <h3>מדדים עכשיו</h3>
+        <div class="metrics">
+          <div class="m-box"><div class="m-lbl">FPS</div><div id="mFps" class="m-val good">--</div></div>
+          <div class="m-box"><div class="m-lbl">Frame</div><div id="mFrame" class="m-val">--</div></div>
+          <div class="m-box"><div class="m-lbl">זיכרון</div><div id="mMem" class="m-val">N/A</div></div>
+          <div class="m-box"><div class="m-lbl">שכבות</div><div id="mLayers" class="m-val">0/20</div></div>
+          <div class="m-box"><div class="m-lbl">Features</div><div id="mFeat" class="m-val">0</div></div>
+          <div class="m-box"><div class="m-lbl">Idle</div><div id="mIdle" class="m-val">--</div></div>
         </div>
       </div>
+
+      <div class="card">
+        <h3>ציונים</h3>
+        <div class="scores">
+          <div class="s-box"><div id="sc1" class="s-num">—</div><div class="s-lbl">1. בסיס</div></div>
+          <div class="s-box"><div id="sc2" class="s-num">—</div><div class="s-lbl">2. אחרי טעינה</div></div>
+          <div class="s-box"><div id="sc3" class="s-num">—</div><div class="s-lbl">3. תנועה</div></div>
+          <div class="s-box"><div id="sc4" class="s-num">—</div><div class="s-lbl">4. בידוד</div></div>
+          <div class="s-box" style="grid-column:1/-1"><div id="sc5" class="s-num">—</div><div class="s-lbl">5. אחרי שיפור</div></div>
+        </div>
+      </div>
+
+      <div class="card" style="padding-bottom:3px">
+        <h3>הבדיקות (לפי הסדר)</h3>
+
+        <div class="step active" id="step1">
+          <div class="step-title"><span class="badge">1</span> בדיקת בסיס</div>
+          <div class="step-desc">
+            בודקים את המפה בלי שכבות בכלל – כדי לדעת מה ה-FPS הרגיל.
+          </div>
+          <button class="action green" id="btn1">בדוק בסיס</button>
+          <div class="step-status" id="st1"></div>
+        </div>
+
+        <div class="step" id="step2">
+          <div class="step-title"><span class="badge">2</span> טעינת 20 שכבות</div>
+          <div class="step-desc">
+            מוסיפים 20 שכבות (נקודות, קווים, פוליגונים) ורואים כמה זה מאט.
+          </div>
+          <div class="row-btns">
+            <button class="action" id="btn2" disabled>טען שכבות</button>
+            <button class="action green" id="btnToggle" disabled style="flex:0.55">הסתר/הצג</button>
+          </div>
+          <div class="step-status" id="st2"></div>
+        </div>
+
+        <div class="step" id="step3">
+          <div class="step-title"><span class="badge">3</span> תנועת מצלמה</div>
+          <div class="step-desc">
+            מזיזים וזומים את המפה. אם נתקע כאן – המשתמשים ירגישו את זה.
+          </div>
+          <button class="action orange" id="btn3" disabled>בדוק תנועה</button>
+          <div class="step-status" id="st3"></div>
+        </div>
+
+        <div class="step" id="step4">
+          <div class="step-title"><span class="badge">4</span> בידוד שכבות</div>
+          <div class="step-desc">
+            מדליקים כל שכבה לבד ורואים מי לוקחת הכי הרבה זמן.
+          </div>
+          <button class="action red" id="btn4" disabled>בודד שכבות</button>
+          <div class="step-status" id="st4"></div>
+        </div>
+
+        <div class="step" id="step5">
+          <div class="step-title"><span class="badge">5</span> שיפור</div>
+          <div class="step-desc">
+            Clustering לנקודות + פישוט צורות. בודקים אם זה עוזר.
+          </div>
+          <button class="action blue" id="btn5" disabled>שפר ובדוק</button>
+          <div class="step-status" id="st5"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>לוג</h3>
+        <div id="log"></div>
+      </div>
+
+      <div class="card">
+        <h3>מה אפשר לקחת מזה</h3>
+        <div id="recs">סיים את כל הבדיקות כדי לקבל המלצות.</div>
+      </div>
+
     </div>
   </div>
 
-  <!-- לוג -->
-  <div class="card">
-    <h3>לוג אבחון (Profiling Log)</h3>
-    <div id="log"></div>
-    <details>
-      <summary>המלצות אוטומטיות (יופיעו אחרי השלבים)</summary>
-      <div id="recommendations" class="muted" style="margin-top:8px; font-size:13px;">
-        הרץ את כל השלבים כדי לקבל המלצות מותאמות.
-      </div>
-    </details>
-  </div>
-</main>
+</div>
 
 <script>
-const TEL_AVIV_CENTER = [34.7818, 32.0853];
-let map;
-let layersConfig = [];
-let isAllVisible = true;
-let currentStep = 1;
+const CENTER = [34.7818, 32.0853];
+let map, layersConfig = [], isAllVisible = true;
+let frameCount = 0, lastFpsUpdate = performance.now(), lastFrameTs = performance.now();
+let currentFps = 60, currentFrameTime = 16.6, baselineFps = 60;
+let scores = {};
+let layerHeavy = {};
+let mapReady = false;
 
-// Performance state
-let frameCount = 0;
-let lastFpsUpdate = performance.now();
-let lastFrameTimestamp = performance.now();
-let currentFps = 60;
-let currentFrameTime = 16.6;
-let baselineFps = null;
-let scores = { baseline: null, load: null, camera: null, isolation: null, optimized: null };
-let layerHeavyScores = {}; // layerId -> ms
+/* ── Resize divider ── */
+(function setupDivider() {
+  const divider = document.getElementById("divider");
+  const side = document.getElementById("side");
+  const mapWrap = document.getElementById("mapWrap");
+  let dragging = false;
 
-function ts() {
-  return new Date().toLocaleTimeString("he-IL", { hour12: false });
-}
+  function setSideWidth(w) {
+    w = Math.max(280, Math.min(window.innerWidth - 200, w));
+    document.documentElement.style.setProperty("--side-w", w + "px");
+    divider.style.right = w + "px";
+    if (map) map.resize();
+  }
 
-function log(msg, type = "info") {
+  // position divider
+  divider.style.right = getComputedStyle(document.documentElement).getPropertyValue("--side-w").trim();
+
+  divider.addEventListener("mousedown", (e) => {
+    dragging = true;
+    divider.classList.add("dragging");
+    e.preventDefault();
+  });
+  window.addEventListener("mousemove", (e) => {
+    if (!dragging) return;
+    // RTL: side is on the right, so width = window - mouseX
+    const w = window.innerWidth - e.clientX;
+    setSideWidth(w);
+  });
+  window.addEventListener("mouseup", () => {
+    if (dragging) {
+      dragging = false;
+      divider.classList.remove("dragging");
+      if (map) map.resize();
+    }
+  });
+})();
+
+function ts() { return new Date().toLocaleTimeString("he-IL", { hour12: false }); }
+function log(msg, type) {
   const el = document.getElementById("log");
-  const cls = type === "ok" ? "log-ok" : type === "warn" ? "log-warn" : type === "bad" ? "log-bad" : "log-info";
-  el.innerHTML += `<span class="${cls}">[${ts()}] ${msg}</span>\n`;
+  const c = type === "ok" ? "log-ok" : type === "warn" ? "log-warn" : type === "bad" ? "log-bad" : "";
+  el.innerHTML += `<span class="${c}">[${ts()}] ${msg}</span>\n`;
   el.scrollTop = el.scrollHeight;
 }
-
-function setStatus(stepId, txt) {
-  const el = document.getElementById(stepId);
-  if (el) el.textContent = txt;
+function setSt(id, t) { document.getElementById(id).textContent = t; }
+function scoreCls(s) { return s >= 80 ? "good" : s >= 55 ? "warn" : "bad"; }
+function setScore(n, val) {
+  const el = document.getElementById("sc" + n);
+  el.textContent = val != null ? val : "—";
+  el.className = "s-num " + (val != null ? scoreCls(val) : "");
+  scores[n] = val;
 }
-
-function scoreColor(score) {
-  if (score === null || score === undefined) return "";
-  if (score >= 80) return "status-good";
-  if (score >= 55) return "status-warn";
-  return "status-bad";
-}
-
-function updateScoreUI(key, score, detail) {
-  const el = document.getElementById("score" + key.charAt(0).toUpperCase() + key.slice(1));
-  const det = document.getElementById("score" + key.charAt(0).toUpperCase() + key.slice(1) + "Detail");
-  if (el) {
-    el.textContent = score !== null ? score : "—";
-    el.className = "score-num " + scoreColor(score);
+function activateStep(n) {
+  for (let i = 1; i <= 5; i++) {
+    const el = document.getElementById("step" + i);
+    el.classList.remove("active", "done");
+    if (i < n) el.classList.add("done");
+    else if (i === n) el.classList.add("active");
   }
-  if (det) det.textContent = detail || "";
-  scores[key] = score;
 }
-
-function unlockStep(n) {
-  const panel = document.getElementById("step" + n);
-  if (panel) {
-    panel.style.opacity = "1";
-    panel.style.pointerEvents = "auto";
-  }
-  document.querySelectorAll(".progress-step").forEach(s => {
-    const sn = +s.dataset.step;
-    s.classList.remove("active", "done", "locked");
-    if (sn < n) s.classList.add("done");
-    else if (sn === n) s.classList.add("active");
-    else s.classList.add("locked");
+function fpsScore(fps, base = 60) {
+  return Math.round(Math.max(0, Math.min(100, (fps / Math.max(base, 30)) * 100)));
+}
+function waitFps(ms = 1400) {
+  return new Promise(res => {
+    const arr = [];
+    const t0 = performance.now();
+    const iv = setInterval(() => {
+      arr.push(currentFps);
+      if (performance.now() - t0 >= ms) {
+        clearInterval(iv);
+        res({ avg: Math.round(arr.reduce((a,b)=>a+b,0)/arr.length), min: Math.min(...arr) });
+      }
+    }, 180);
   });
-  currentStep = n;
 }
 
-function enableButton(id) {
-  const b = document.getElementById(id);
-  if (b) b.disabled = false;
-}
+document.getElementById("btnStart").onclick = () => {
+  document.getElementById("intro").style.display = "none";
+  document.getElementById("app").classList.add("visible");
+  if (!mapReady) initMap();
+  setTimeout(() => { if (map) map.resize(); }, 60);
+};
 
-// ─── Map init ───────────────────────────────────────────────
 function initMap() {
   map = new maplibregl.Map({
     container: "map",
     style: {
       version: 8,
       sources: {
-        "carto-basemap": {
+        base: {
           type: "raster",
           tiles: ["https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"],
           tileSize: 256,
-          attribution: "&copy; OpenStreetMap, &copy; CARTO"
+          attribution: "© OSM © CARTO"
         }
       },
-      layers: [{
-        id: "carto-layer",
-        type: "raster",
-        source: "carto-basemap",
-        minzoom: 0,
-        maxzoom: 22
-      }]
+      layers: [{ id: "base", type: "raster", source: "base" }]
     },
-    center: TEL_AVIV_CENTER,
+    center: CENTER,
     zoom: 12.5,
     antialias: true
   });
-
   map.addControl(new maplibregl.NavigationControl(), "top-left");
-
   map.on("load", () => {
-    log("מפת MapLibre GL נטענה (Raster Base בלבד).", "ok");
-    startPerformanceMonitoring();
+    mapReady = true;
+    log("מפה מוכנה", "ok");
+    requestAnimationFrame(loop);
   });
 }
-
-// ─── FPS loop ───────────────────────────────────────────────
-function startPerformanceMonitoring() {
-  function loop(timestamp) {
-    frameCount++;
-    const delta = timestamp - lastFrameTimestamp;
-    lastFrameTimestamp = timestamp;
-    currentFrameTime = delta;
-
-    if (timestamp - lastFpsUpdate >= 1000) {
-      currentFps = Math.round((frameCount * 1000) / (timestamp - lastFpsUpdate));
-      frameCount = 0;
-      lastFpsUpdate = timestamp;
-      updateMetricsUI();
-    }
-    requestAnimationFrame(loop);
+function loop(ts) {
+  frameCount++;
+  currentFrameTime = ts - lastFrameTs;
+  lastFrameTs = ts;
+  if (ts - lastFpsUpdate >= 1000) {
+    currentFps = Math.round(frameCount * 1000 / (ts - lastFpsUpdate));
+    frameCount = 0;
+    lastFpsUpdate = ts;
+    updateUI();
   }
   requestAnimationFrame(loop);
 }
-
-function updateMetricsUI() {
-  const fpsEl = document.getElementById("metricFps");
-  fpsEl.textContent = currentFps;
-  fpsEl.className = "metric-value " + (currentFps >= 50 ? "status-good" : currentFps >= 30 ? "status-warn" : "status-bad");
-
-  document.getElementById("metricFrameTime").textContent = currentFrameTime.toFixed(1) + " ms";
-
+function updateUI() {
+  const f = document.getElementById("mFps");
+  f.textContent = currentFps;
+  f.className = "m-val " + (currentFps >= 50 ? "good" : currentFps >= 30 ? "warn" : "bad");
+  document.getElementById("mFrame").textContent = currentFrameTime.toFixed(0) + "ms";
   if (performance.memory) {
-    const heapMB = (performance.memory.usedJSHeapSize / (1024 * 1024)).toFixed(1);
-    document.getElementById("metricMemory").textContent = heapMB + " MB";
+    document.getElementById("mMem").textContent =
+      (performance.memory.usedJSHeapSize / 1048576).toFixed(0) + "MB";
   }
-
-  // active layers
   if (layersConfig.length) {
-    const active = layersConfig.filter(l => {
-      try {
-        return map.getLayer(l.id) && map.getLayoutProperty(l.id, "visibility") !== "none";
-      } catch { return false; }
+    const act = layersConfig.filter(l => {
+      try { return map.getLayer(l.id) && map.getLayoutProperty(l.id, "visibility") !== "none"; }
+      catch { return false; }
     }).length;
-    document.getElementById("metricLayersCount").textContent = active + " / 20";
+    document.getElementById("mLayers").textContent = act + "/20";
   }
 }
 
-// ─── Score helpers ──────────────────────────────────────────
-function fpsToScore(fps, baseline = 60) {
-  // 60+ → 100, 30 → 50, 15 → 20, 0 → 0
-  const ratio = Math.min(fps / Math.max(baseline, 30), 1.2);
-  return Math.round(Math.max(0, Math.min(100, ratio * 100)));
-}
-
-function awaitStableFps(ms = 1200) {
-  return new Promise(resolve => {
-    const samples = [];
-    const start = performance.now();
-    const iv = setInterval(() => {
-      samples.push(currentFps);
-      if (performance.now() - start >= ms) {
-        clearInterval(iv);
-        const avg = samples.reduce((a, b) => a + b, 0) / samples.length;
-        resolve({ avg: Math.round(avg), min: Math.min(...samples), samples });
-      }
-    }, 200);
-  });
-}
-
-// ─── Step 1: Baseline ───────────────────────────────────────
-async function runBaseline() {
-  const btn = document.getElementById("btnBaseline");
-  btn.disabled = true;
-  setStatus("statusStep1", "מודד...");
-  log("▶ שלב 1: בדיקת בסיס (מפה ריקה)...", "info");
-
-  await new Promise(r => setTimeout(r, 800));
-  const { avg, min } = await awaitStableFps(1500);
+async function step1() {
+  document.getElementById("btn1").disabled = true;
+  setSt("st1", "בודק...");
+  log("שלב 1: בדיקת בסיס");
+  await new Promise(r => setTimeout(r, 600));
+  const { avg, min } = await waitFps(1500);
   baselineFps = avg;
-
-  const score = fpsToScore(avg, 60);
-  updateScoreUI("baseline", score, `FPS ממוצע ${avg} (מינ׳ ${min})`);
-
-  log(`✔ בסיס: FPS ממוצע ${avg}, מינימום ${min} → ציון ${score}/100`, score >= 80 ? "ok" : "warn");
-  setStatus("statusStep1", `הושלם • ציון ${score}`);
-
-  unlockStep(2);
-  enableButton("btnLoadLayers");
+  const sc = fpsScore(avg, 60);
+  setScore(1, sc);
+  setSt("st1", "ציון " + sc + " • FPS " + avg);
+  log("בסיס: FPS " + avg + " (מינ׳ " + min + ") → " + sc, sc >= 80 ? "ok" : "warn");
+  activateStep(2);
+  document.getElementById("btn2").disabled = false;
 }
 
-// ─── Generate & Load 20 layers ──────────────────────────────
-function generate20Layers(optimized = false) {
-  const layerTypes = ["circle", "line", "fill"];
-  const colors = [
-    "#e65100","#0288d1","#2e7d32","#d81b60","#8e24aa",
-    "#3949ab","#00acc1","#00897b","#7cb342","#c0ca33",
-    "#fdd835","#fb8c00","#f4511e","#6d4c41","#546e7a",
-    "#e53935","#d81b60","#8e24aa","#1e88e5","#43a047"
-  ];
-
+function genLayers(opt) {
+  const types = ["circle", "line", "fill"];
+  const colors = ["#e65100","#0288d1","#2e7d32","#d81b60","#8e24aa","#3949ab","#00acc1","#00897b","#7cb342","#c0ca33","#fdd835","#fb8c00","#f4511e","#6d4c41","#546e7a","#e53935","#d81b60","#8e24aa","#1e88e5","#43a047"];
   layersConfig = [];
-  let totalFeatures = 0;
-
+  let total = 0;
   for (let i = 1; i <= 20; i++) {
-    const color = colors[i - 1];
-    const type = layerTypes[i % 3];
-    const layerId = `layer-${i}`;
-    const sourceId = `source-${i}`;
-    const count = optimized ? Math.floor((80 + i * 12) * 0.55) : (100 + i * 20);
-
-    const features = [];
+    const type = types[i % 3];
+    const count = opt ? Math.floor((80 + i * 12) * 0.55) : (100 + i * 20);
+    const feats = [];
     for (let j = 0; j < count; j++) {
-      const lng = TEL_AVIV_CENTER[0] + (Math.random() - 0.5) * 0.08;
-      const lat = TEL_AVIV_CENTER[1] + (Math.random() - 0.5) * 0.08;
-
+      const lng = CENTER[0] + (Math.random() - 0.5) * 0.08;
+      const lat = CENTER[1] + (Math.random() - 0.5) * 0.08;
       if (type === "circle") {
-        features.push(turf.point([lng, lat], { name: `P${j}-L${i}` }));
+        feats.push(turf.point([lng, lat]));
       } else if (type === "line") {
-        const coords = [
+        let ln = turf.lineString([
           [lng, lat],
-          [lng + (Math.random() - 0.5) * 0.012, lat + (Math.random() - 0.5) * 0.012],
-          [lng + (Math.random() - 0.5) * 0.012, lat + (Math.random() - 0.5) * 0.012]
-        ];
-        let line = turf.lineString(coords, { name: `L${j}-L${i}` });
-        if (optimized) {
-          line = turf.simplify(line, { tolerance: 0.00008, highQuality: false });
-        }
-        features.push(line);
+          [lng + (Math.random()-0.5)*0.012, lat + (Math.random()-0.5)*0.012],
+          [lng + (Math.random()-0.5)*0.012, lat + (Math.random()-0.5)*0.012]
+        ]);
+        if (opt) ln = turf.simplify(ln, { tolerance: 0.00008, highQuality: false });
+        feats.push(ln);
       } else {
-        let poly = turf.buffer(turf.point([lng, lat]), 0.08 + Math.random() * 0.12, { units: "kilometers" });
-        if (optimized) {
-          poly = turf.simplify(poly, { tolerance: 0.0001, highQuality: false });
-        }
-        features.push(poly);
+        let p = turf.buffer(turf.point([lng, lat]), 0.08 + Math.random()*0.12, { units: "kilometers" });
+        if (opt) p = turf.simplify(p, { tolerance: 0.0001, highQuality: false });
+        feats.push(p);
       }
     }
-
-    totalFeatures += features.length;
+    total += feats.length;
     layersConfig.push({
-      id: layerId,
-      sourceId,
-      title: `שכבה ${i}: ${type === "circle" ? "נקודות" : type === "line" ? "קווים" : "פוליגונים"} (${features.length})`,
-      type,
-      color,
-      data: turf.featureCollection(features),
-      optimized
+      id: "l" + i, src: "s" + i, type, color: colors[i-1],
+      title: i + ". " + (type === "circle" ? "נקודות" : type === "line" ? "קווים" : "פוליגונים") + " (" + feats.length + ")",
+      data: turf.featureCollection(feats)
     });
   }
-  return totalFeatures;
+  return total;
 }
 
-function clearAllLayers() {
-  layersConfig.forEach(cfg => {
-    if (map.getLayer(cfg.id)) map.removeLayer(cfg.id);
-    if (map.getSource(cfg.sourceId)) map.removeSource(cfg.sourceId);
+function clearLayers() {
+  layersConfig.forEach(c => {
+    if (map.getLayer(c.id)) map.removeLayer(c.id);
+    if (map.getLayer(c.id + "-c")) map.removeLayer(c.id + "-c");
+    if (map.getSource(c.src)) map.removeSource(c.src);
   });
   layersConfig = [];
-  document.getElementById("layersList").innerHTML = '<span class="muted">אין שכבות</span>';
-  document.getElementById("metricFeatures").textContent = "0";
-  document.getElementById("metricLayersCount").textContent = "0 / 20";
+  document.getElementById("layersList").innerHTML = '<span style="color:#94a3b8">אין שכבות</span>';
+  document.getElementById("mFeat").textContent = "0";
 }
 
-async function load20LayersToMap(optimized = false) {
-  const btn = document.getElementById("btnLoadLayers");
+function renderList() {
+  const box = document.getElementById("layersList");
+  box.innerHTML = "";
+  layersConfig.forEach(c => {
+    const ms = layerHeavy[c.id];
+    const cls = ms > 40 ? "bad" : ms > 20 ? "warn" : "good";
+    const row = document.createElement("div");
+    row.className = "layer-row";
+    row.innerHTML =
+      '<label><input type="checkbox" id="chk_' + c.id + '" checked onchange="tog(\'' + c.id + '\',this.checked)">' +
+      '<span class="dot" style="background:' + c.color + '"></span>' + c.title + '</label>' +
+      '<span class="l-score ' + cls + '">' + (ms != null ? ms.toFixed(0) + "ms" : "") + '</span>';
+    box.appendChild(row);
+  });
+}
+
+function tog(id, vis) {
+  const v = vis ? "visible" : "none";
+  if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", v);
+  if (map.getLayer(id + "-c")) map.setLayoutProperty(id + "-c", "visibility", v);
+  updateUI();
+}
+window.tog = tog;
+
+function toggleAll() {
+  isAllVisible = !isAllVisible;
+  layersConfig.forEach(c => {
+    tog(c.id, isAllVisible);
+    const chk = document.getElementById("chk_" + c.id);
+    if (chk) chk.checked = isAllVisible;
+  });
+  log(isAllVisible ? "הכל מוצג" : "הכל מוסתר");
+}
+
+async function step2(opt) {
+  const btn = document.getElementById("btn2");
   btn.disabled = true;
-  setStatus("statusStep2", optimized ? "טוען גרסה מאופטימלת..." : "טוען 20 שכבות...");
-  log(optimized ? "▶ טוען גרסה מאופטימלת (Clustering + Simplify)..." : "▶ שלב 2: יוצר ומטעין 20 שכבות GeoJSON...", "info");
+  setSt(opt ? "st5" : "st2", opt ? "משפר..." : "טוען...");
+  log(opt ? "שלב 5: Clustering + פישוט" : "שלב 2: טעינת 20 שכבות");
 
-  clearAllLayers();
+  clearLayers();
   const t0 = performance.now();
-  const totalFeatures = generate20Layers(optimized);
+  const total = genLayers(opt);
 
-  let loaded = 0;
-  for (const cfg of layersConfig) {
-    const sourceOpts = {
-      type: "geojson",
-      data: cfg.data,
-      maxzoom: 14
-    };
-    // Clustering only for point layers when optimized
-    if (optimized && cfg.type === "circle") {
-      sourceOpts.cluster = true;
-      sourceOpts.clusterMaxZoom = 14;
-      sourceOpts.clusterRadius = 45;
+  for (const c of layersConfig) {
+    const opts = { type: "geojson", data: c.data, maxzoom: 14 };
+    if (opt && c.type === "circle") {
+      opts.cluster = true;
+      opts.clusterMaxZoom = 14;
+      opts.clusterRadius = 45;
     }
+    map.addSource(c.src, opts);
 
-    map.addSource(cfg.sourceId, sourceOpts);
-
-    let paint = {};
-    let type = cfg.type;
-    if (cfg.type === "circle") {
-      if (optimized) {
-        // cluster + unclustered
+    if (c.type === "circle") {
+      if (opt) {
         map.addLayer({
-          id: cfg.id + "-clusters",
-          type: "circle",
-          source: cfg.sourceId,
+          id: c.id + "-c", type: "circle", source: c.src,
           filter: ["has", "point_count"],
           paint: {
-            "circle-color": cfg.color,
+            "circle-color": c.color,
             "circle-radius": ["step", ["get", "point_count"], 14, 10, 18, 30, 24],
             "circle-opacity": 0.75
           }
         });
         map.addLayer({
-          id: cfg.id,
-          type: "circle",
-          source: cfg.sourceId,
+          id: c.id, type: "circle", source: c.src,
           filter: ["!", ["has", "point_count"]],
-          paint: {
-            "circle-radius": 5,
-            "circle-color": cfg.color,
-            "circle-opacity": 0.8,
-            "circle-stroke-width": 1,
-            "circle-stroke-color": "#fff"
-          }
+          paint: { "circle-radius": 5, "circle-color": c.color, "circle-opacity": 0.8,
+                   "circle-stroke-width": 1, "circle-stroke-color": "#fff" }
         });
       } else {
-        paint = {
-          "circle-radius": 5,
-          "circle-color": cfg.color,
-          "circle-opacity": 0.8,
-          "circle-stroke-width": 1,
-          "circle-stroke-color": "#ffffff"
-        };
-        map.addLayer({ id: cfg.id, type: "circle", source: cfg.sourceId, paint });
+        map.addLayer({
+          id: c.id, type: "circle", source: c.src,
+          paint: { "circle-radius": 5, "circle-color": c.color, "circle-opacity": 0.8,
+                   "circle-stroke-width": 1, "circle-stroke-color": "#fff" }
+        });
       }
-    } else if (cfg.type === "line") {
-      paint = { "line-color": cfg.color, "line-width": 2, "line-opacity": 0.7 };
-      map.addLayer({ id: cfg.id, type: "line", source: cfg.sourceId, paint });
+    } else if (c.type === "line") {
+      map.addLayer({
+        id: c.id, type: "line", source: c.src,
+        paint: { "line-color": c.color, "line-width": 2, "line-opacity": 0.7 }
+      });
     } else {
-      paint = {
-        "fill-color": cfg.color,
-        "fill-opacity": 0.35,
-        "fill-outline-color": cfg.color
-      };
-      map.addLayer({ id: cfg.id, type: "fill", source: cfg.sourceId, paint });
+      map.addLayer({
+        id: c.id, type: "fill", source: c.src,
+        paint: { "fill-color": c.color, "fill-opacity": 0.35, "fill-outline-color": c.color }
+      });
     }
-    loaded++;
   }
 
-  // wait for idle
-  const idlePromise = new Promise(resolve => {
-    map.once("idle", () => resolve(performance.now() - t0));
-  });
-  // safety timeout
   const idleMs = await Promise.race([
-    idlePromise,
-    new Promise(r => setTimeout(() => r(performance.now() - t0), 8000))
+    new Promise(r => map.once("idle", () => r(performance.now() - t0))),
+    new Promise(r => setTimeout(() => r(performance.now() - t0), 7000))
   ]);
 
-  document.getElementById("metricIdle").textContent = Math.round(idleMs) + " ms";
-  document.getElementById("metricFeatures").textContent = totalFeatures.toLocaleString("he-IL");
+  document.getElementById("mIdle").textContent = Math.round(idleMs) + "ms";
+  document.getElementById("mFeat").textContent = total.toLocaleString("he-IL");
+  renderList();
+  updateUI();
+  log("נטענו 20 שכבות • " + total.toLocaleString("he-IL") + " אלמנטים • " + Math.round(idleMs) + "ms", "ok");
 
-  renderLayersControl();
-  updateMetricsUI();
+  await new Promise(r => setTimeout(r, 500));
+  const { avg, min } = await waitFps(1500);
+  const sc = fpsScore(avg, baselineFps);
 
-  log(`✔ נטענו ${loaded} שכבות • ${totalFeatures.toLocaleString("he-IL")} features • Time-to-Idle: ${Math.round(idleMs)} ms`, "ok");
-
-  // measure stable FPS after load
-  await new Promise(r => setTimeout(r, 600));
-  const { avg, min } = await awaitStableFps(1600);
-
-  if (!optimized) {
-    const score = fpsToScore(avg, baselineFps || 60);
-    updateScoreUI("load", score, `FPS ${avg} (מינ׳ ${min}) • Idle ${Math.round(idleMs)}ms`);
-    setStatus("statusStep2", `הושלם • ציון ${score}`);
-    log(`ציון אחרי טעינה: ${score}/100 (FPS ממוצע ${avg})`, score >= 70 ? "ok" : "warn");
-
-    unlockStep(3);
-    enableButton("btnStress");
-    enableButton("btnToggleAll");
-    enableButton("btnIsolate");
+  if (!opt) {
+    setScore(2, sc);
+    setSt("st2", "ציון " + sc + " • FPS " + avg);
+    log("אחרי טעינה: FPS " + avg + " → " + sc, sc >= 70 ? "ok" : "warn");
+    activateStep(3);
+    document.getElementById("btn3").disabled = false;
+    document.getElementById("btnToggle").disabled = false;
+    document.getElementById("btn4").disabled = false;
   } else {
-    const score = fpsToScore(avg, baselineFps || 60);
-    updateScoreUI("optimized", score, `FPS ${avg} (מינ׳ ${min}) • Idle ${Math.round(idleMs)}ms`);
-    setStatus("statusStep5", `הושלם • ציון ${score}`);
-    log(`✔ אחרי אופטימיזציה: FPS ${avg} → ציון ${score}/100`, "ok");
-    generateRecommendations();
+    setScore(5, sc);
+    setSt("st5", "ציון " + sc + " • FPS " + avg);
+    log("אחרי שיפור: FPS " + avg + " → " + sc, "ok");
+    makeRecs();
   }
-
   btn.disabled = false;
 }
 
-function renderLayersControl() {
-  const container = document.getElementById("layersList");
-  container.innerHTML = "";
-  layersConfig.forEach(cfg => {
-    const heavy = layerHeavyScores[cfg.id];
-    const scoreTxt = heavy != null ? `${heavy.toFixed(0)}ms` : "";
-    const scoreCls = heavy > 40 ? "status-bad" : heavy > 20 ? "status-warn" : "status-good";
-
-    const item = document.createElement("div");
-    item.className = "layer-item";
-    item.innerHTML = `
-      <label>
-        <input type="checkbox" id="chk_${cfg.id}" checked
-               onchange="toggleLayerVisibility('${cfg.id}', this.checked)" />
-        <span class="color-dot" style="background:${cfg.color}"></span>
-        ${cfg.title}
-      </label>
-      <span class="layer-score ${scoreCls}" id="hscore_${cfg.id}">${scoreTxt}</span>
-    `;
-    container.appendChild(item);
-  });
-}
-
-function toggleLayerVisibility(layerId, isVisible) {
-  const vis = isVisible ? "visible" : "none";
-  if (map.getLayer(layerId)) map.setLayoutProperty(layerId, "visibility", vis);
-  // also clusters if exist
-  if (map.getLayer(layerId + "-clusters")) {
-    map.setLayoutProperty(layerId + "-clusters", "visibility", vis);
-  }
-  updateMetricsUI();
-}
-
-function toggleAllLayers() {
-  isAllVisible = !isAllVisible;
-  layersConfig.forEach(l => {
-    toggleLayerVisibility(l.id, isAllVisible);
-    const chk = document.getElementById("chk_" + l.id);
-    if (chk) chk.checked = isAllVisible;
-  });
-  log(`${isAllVisible ? "הוצגו" : "הוסתרו"} כל השכבות.`, "info");
-}
-
-// ─── Step 3: Camera Stress ──────────────────────────────────
-async function runCameraStressTest() {
-  const btn = document.getElementById("btnStress");
-  btn.disabled = true;
-  setStatus("statusStep3", "מריץ תנועות מצלמה...");
-  log("▶ שלב 3: Camera Stress Test (4 מעברים)...", "info");
-
+async function step3() {
+  document.getElementById("btn3").disabled = true;
+  setSt("st3", "מזיז...");
+  log("שלב 3: תנועת מצלמה");
   const targets = [
-    { center: [34.7900, 32.0950], zoom: 15, pitch: 45, bearing: 30 },
-    { center: [34.7650, 32.0650], zoom: 14, pitch: 0,  bearing: -40 },
-    { center: [34.8050, 32.0750], zoom: 16, pitch: 55, bearing: 90 },
-    { center: TEL_AVIV_CENTER,    zoom: 12.5, pitch: 0, bearing: 0 }
+    { center: [34.79, 32.095], zoom: 15, pitch: 45, bearing: 30 },
+    { center: [34.765, 32.065], zoom: 14, pitch: 0, bearing: -40 },
+    { center: [34.805, 32.075], zoom: 16, pitch: 55, bearing: 90 },
+    { center: CENTER, zoom: 12.5, pitch: 0, bearing: 0 }
   ];
-
-  let minFps = currentFps;
-  const fpsSamples = [];
-
-  for (let i = 0; i < targets.length; i++) {
-    const t = targets[i];
-    log(`  מעבר מצלמה ${i + 1}/4...`, "info");
-    map.flyTo({
-      center: t.center,
-      zoom: t.zoom,
-      pitch: t.pitch,
-      bearing: t.bearing,
-      speed: 1.15,
-      curve: 1.4,
-      essential: true
-    });
+  let minF = currentFps;
+  const samples = [];
+  for (let i = 0; i < 4; i++) {
+    log("  מעבר " + (i+1) + "/4");
+    map.flyTo({ ...targets[i], speed: 1.15, curve: 1.4, essential: true });
     await new Promise(r => setTimeout(r, 2300));
-    fpsSamples.push(currentFps);
-    if (currentFps < minFps) minFps = currentFps;
+    samples.push(currentFps);
+    if (currentFps < minF) minF = currentFps;
   }
-
-  const avgDuring = Math.round(fpsSamples.reduce((a, b) => a + b, 0) / fpsSamples.length);
-  const score = fpsToScore(minFps, baselineFps || 55);
-
-  updateScoreUI("camera", score, `מינ׳ FPS ${minFps} • ממוצע ${avgDuring}`);
-  log(`✔ Camera Stress הסתיים. מינ׳ FPS: ${minFps} | ממוצע: ${avgDuring} → ציון ${score}/100`,
-      score >= 65 ? "ok" : "warn");
-  setStatus("statusStep3", `הושלם • ציון ${score}`);
-
-  unlockStep(4);
-  btn.disabled = false;
+  const avg = Math.round(samples.reduce((a,b)=>a+b,0)/samples.length);
+  const sc = fpsScore(minF, baselineFps);
+  setScore(3, sc);
+  setSt("st3", "ציון " + sc + " • מינ׳ " + minF);
+  log("תנועה: מינ׳ " + minF + " | ממוצע " + avg + " → " + sc, sc >= 65 ? "ok" : "warn");
+  activateStep(4);
+  document.getElementById("btn3").disabled = false;
 }
 
-// ─── Step 4: Isolation ──────────────────────────────────────
-async function runLayerIsolationProfiling() {
-  const btn = document.getElementById("btnIsolate");
-  btn.disabled = true;
-  setStatus("statusStep4", "מבודד שכבות...");
-  log("▶ שלב 4: בידוד שכבות – מודד כל שכבה בנפרד...", "info");
+async function step4() {
+  document.getElementById("btn4").disabled = true;
+  setSt("st4", "מבודד...");
+  log("שלב 4: בידוד שכבות");
+  layersConfig.forEach(c => tog(c.id, false));
+  await new Promise(r => setTimeout(r, 350));
 
-  // hide all
-  layersConfig.forEach(l => toggleLayerVisibility(l.id, false));
-  await new Promise(r => setTimeout(r, 400));
-
-  let slowest = null;
-  let maxMs = 0;
-  const results = [];
-
-  for (const cfg of layersConfig) {
-    toggleLayerVisibility(cfg.id, true);
+  let worst = null, maxMs = 0;
+  for (const c of layersConfig) {
+    tog(c.id, true);
     map.triggerRepaint();
-
     const t0 = performance.now();
-    await new Promise(r => setTimeout(r, 180));
-    const dur = performance.now() - t0;
-
-    results.push({ title: cfg.title, id: cfg.id, ms: dur });
-    layerHeavyScores[cfg.id] = dur;
-
-    log(`  ${cfg.title} → ${dur.toFixed(1)} ms`, dur > 35 ? "warn" : "info");
-
-    if (dur > maxMs) {
-      maxMs = dur;
-      slowest = cfg.title;
-    }
-    toggleLayerVisibility(cfg.id, false);
+    await new Promise(r => setTimeout(r, 170));
+    const ms = performance.now() - t0;
+    layerHeavy[c.id] = ms;
+    log("  " + c.title + " → " + ms.toFixed(0) + "ms", ms > 35 ? "warn" : "");
+    if (ms > maxMs) { maxMs = ms; worst = c.title; }
+    tog(c.id, false);
   }
-
-  // restore all
-  layersConfig.forEach(l => {
-    toggleLayerVisibility(l.id, true);
-    const chk = document.getElementById("chk_" + l.id);
+  layersConfig.forEach(c => {
+    tog(c.id, true);
+    const chk = document.getElementById("chk_" + c.id);
     if (chk) chk.checked = true;
   });
-  renderLayersControl(); // refresh scores in panel
+  renderList();
 
-  // score: how balanced / how bad is the worst layer
-  // if worst < 25ms → high score; if > 80ms → low
-  const isolationScore = Math.round(Math.max(0, Math.min(100, 110 - maxMs * 1.1)));
-  updateScoreUI("isolation", isolationScore, `הכבדה ביותר: ${maxMs.toFixed(0)}ms`);
-
-  log(`✔ בידוד הסתיים. השכבה הכבדה ביותר: "${slowest}" (${maxMs.toFixed(1)} ms) → ציון ${isolationScore}/100`,
-      isolationScore >= 70 ? "ok" : "warn");
-  setStatus("statusStep4", `הושלם • ציון ${isolationScore}`);
-
-  unlockStep(5);
-  enableButton("btnOptimize");
-  btn.disabled = false;
+  const sc = Math.round(Math.max(0, Math.min(100, 110 - maxMs * 1.1)));
+  setScore(4, sc);
+  setSt("st4", "ציון " + sc + " • כבדה: " + maxMs.toFixed(0) + "ms");
+  log("הכבדה: " + worst + " (" + maxMs.toFixed(0) + "ms) → " + sc, sc >= 70 ? "ok" : "warn");
+  activateStep(5);
+  document.getElementById("btn5").disabled = false;
+  document.getElementById("btn4").disabled = false;
 }
 
-// ─── Step 5: Optimize ───────────────────────────────────────
-async function runOptimization() {
-  const btn = document.getElementById("btnOptimize");
-  btn.disabled = true;
-  setStatus("statusStep5", "מחיל אופטימיזציות...");
-  log("▶ שלב 5: מחיל Clustering (נקודות) + Simplify (קווים/פוליגונים) וטוען מחדש...", "info");
+function step5() { step2(true); }
 
-  await load20LayersToMap(true);
-  // load20LayersToMap already sets the optimized score when optimized=true
+function makeRecs() {
+  const r = [];
+  if (scores[2] != null && scores[2] < 70)
+    r.push("אחרי הטעינה הביצועים ירדו חזק – כדאי להפחית אלמנטים או לעבור ל-Vector Tiles.");
+  if (scores[3] != null && scores[3] < 60)
+    r.push("בתנועה זה נתקע – יותר מדי נתונים על המסך. Clustering ו-maxzoom יעזרו.");
+  if (scores[4] != null && scores[4] < 65) {
+    const top = Object.entries(layerHeavy).sort((a,b) => b[1]-a[1]).slice(0,3);
+    r.push("שכבות כבדות: " + top.map(([id,ms]) => id + " (" + ms.toFixed(0) + "ms)").join(", "));
+  }
+  if (scores[5] != null && scores[2] != null && scores[5] > scores[2] + 5)
+    r.push("השיפור עבד – עלה מ-" + scores[2] + " ל-" + scores[5] + ". שווה ליישם.");
+  else if (scores[5] != null && scores[2] != null)
+    r.push("השיפור לא הספיק – כנראה צריך Vector Tiles או פחות נתונים.");
+
+  r.push("עדיף מקור אחד חכם על פני הרבה sources נפרדים.");
+  r.push("תגביל zoom לנקודות (maxzoom 12–14).");
+  r.push("מעל עשרות אלפי אלמנטים – עבור ל-Vector Tiles.");
+
+  document.getElementById("recs").innerHTML = "<ul>" + r.map(x => "<li>" + x + "</li>").join("") + "</ul>";
+  log("המלצות מוכנות", "ok");
 }
 
-// ─── Recommendations ────────────────────────────────────────
-function generateRecommendations() {
-  const recs = [];
-  const loadScore = scores.load;
-  const camScore = scores.camera;
-  const isoScore = scores.isolation;
-  const optScore = scores.optimized;
-
-  if (loadScore !== null && loadScore < 70) {
-    recs.push("• ירידה חדה אחרי טעינת השכבות → שקול להפחית מספר features או לעבור ל-Vector Tiles.");
-  }
-  if (camScore !== null && camScore < 60) {
-    recs.push("• Camera Stress נמוך → יותר מדי vertices / sources. מומלץ maxzoom נמוך יותר + clustering.");
-  }
-  if (isoScore !== null && isoScore < 65) {
-    const heavy = Object.entries(layerHeavyScores).sort((a, b) => b[1] - a[1]).slice(0, 3);
-    recs.push("• שכבות כבדות זוהו: " + heavy.map(([id, ms]) => `${id} (${ms.toFixed(0)}ms)`).join(", "));
-  }
-  if (optScore !== null && loadScore !== null && optScore > loadScore + 8) {
-    recs.push(`• האופטימיזציה שיפרה את הציון מ-${loadScore} ל-${optScore}. כדאי ליישם Clustering + Simplify בפרודקשן.`);
-  } else if (optScore !== null && loadScore !== null && optScore <= loadScore) {
-    recs.push("• האופטימיזציה הנוכחית לא שיפרה מספיק – שקול Vector Tiles או הפחתת נתונים משמעותית יותר.");
-  }
-
-  recs.push("• כללי: העדף מקור GeoJSON אחד + data-driven styling על פני עשרות sources נפרדים.");
-  recs.push("• הגדר maxzoom: 12–14 על sources של נקודות, ו-minzoom על layers.");
-  recs.push("• למעל ~50–100k features – עבור ל-Vector Tiles (tippecanoe / PMTiles).");
-
-  document.getElementById("recommendations").innerHTML = recs.length
-    ? recs.join("<br>")
-    : "אין המלצות מיוחדות – הביצועים נראים סבירים.";
-  log("המלצות אוטומטיות עודכנו (ראה בחלק התחתון).", "ok");
-}
-
-// ─── Wire buttons ───────────────────────────────────────────
-document.getElementById("btnBaseline").onclick = runBaseline;
-document.getElementById("btnLoadLayers").onclick = () => load20LayersToMap(false);
-document.getElementById("btnToggleAll").onclick = toggleAllLayers;
-document.getElementById("btnStress").onclick = runCameraStressTest;
-document.getElementById("btnIsolate").onclick = runLayerIsolationProfiling;
-document.getElementById("btnOptimize").onclick = runOptimization;
-
-// make toggleLayerVisibility global for inline onchange
-window.toggleLayerVisibility = toggleLayerVisibility;
-
-// start
-initMap();
-log("מוכן. התחל בשלב 1 – בדיקת בסיס.", "info");
+document.getElementById("btn1").onclick = step1;
+document.getElementById("btn2").onclick = () => step2(false);
+document.getElementById("btnToggle").onclick = toggleAll;
+document.getElementById("btn3").onclick = step3;
+document.getElementById("btn4").onclick = step4;
+document.getElementById("btn5").onclick = step5;
 </script>
 </body>
 </html>
