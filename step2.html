@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ניתוח מרחבי: בתי ספר וגינות ציבוריות - תל אביב</title>
+
+  <!-- Leaflet CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Esri Leaflet -->
+  <script src="https://unpkg.com/esri-leaflet@3.0.12/dist/esri-leaflet.js"></script>
+
+  <!-- Turf.js לחישובים מרחביים -->
+  <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+
+  <style>
+    body { font-family: "Segoe UI", Arial, sans-serif; margin: 0; background: #f4f6f8; color: #222; }
+    header { background: #1b365d; color: #fff; padding: 14px 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+    header h1 { margin: 0; font-size: 1.25rem; }
+    header p { margin: 4px 0 0 0; font-size: 0.85rem; color: #cbd5e1; }
+    main { padding: 16px; max-width: 1300px; margin: 0 auto; }
+    .card { background: #fff; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,.08); padding: 16px; margin-bottom: 16px; }
+    
+    .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+    button { background: #1b365d; color: #fff; border: 0; border-radius: 6px; padding: 10px 18px; cursor: pointer; font-size: 14px; font-weight: 600; transition: background 0.2s; }
+    button:hover { background: #2c5282; }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    button.secondary { background: #27ae60; }
+    button.secondary:hover { background: #219150; }
+
+    #log {
+      background: #0f172a; color: #38bdf8; font-family: Consolas, monospace; font-size: 12px;
+      height: 130px; overflow-y: auto; padding: 10px; border-radius: 6px; white-space: pre-wrap; line-height: 1.5;
+    }
+    
+    #map { height: 500px; border-radius: 8px; border: 1px solid #cbd5e1; }
+    
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { border-bottom: 1px solid #e2e8f0; padding: 8px 12px; text-align: right; }
+    th { background: #f1f5f9; color: #334155; position: sticky; top: 0; }
+    .table-wrap { max-height: 280px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; }
+    
+    .badge { padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: bold; color: #fff; }
+    .badge-near { background: #e65100; }
+    .badge-far { background: #0288d1; }
+
+    .muted { color: #64748b; font-size: 13px; }
+
+    /* עיצוב המקרא (Legend) Control */
+    .legend-panel {
+      background: rgba(255, 255, 255, 0.95);
+      padding: 12px 14px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+      font-size: 13px;
+      line-height: 22px;
+      color: #1e293b;
+      min-width: 190px;
+    }
+    .legend-panel h4 {
+      margin: 0 0 8px 0;
+      font-size: 14px;
+      border-bottom: 1px solid #cbd5e1;
+      padding-bottom: 4px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      margin-bottom: 6px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .legend-item input {
+      margin-left: 8px;
+      cursor: pointer;
+    }
+    .legend-color {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-left: 8px;
+      border: 1px solid rgba(0,0,0,0.2);
+    }
+    .legend-poly {
+      border-radius: 2px;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>איתור בתי ספר במרחק עד 300 מטר מגינה ציבורית</h1>
+    <p>עיריית תל אביב-יפו • ניתוח מרחבי מהיר בדפדפן (Point Buffer & Intersect)</p>
+  </header>
+
+  <main>
+    <div class="card">
+      <div class="row">
+        <button id="btnRun">התחל ניתוח מרחבי</button>
+        <button id="btnCsv" class="secondary" disabled>הורד תוצאות ל-CSV</button>
+        <span id="status" class="muted">מוכן לביצוע</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0; font-size: 1rem;">לוג הרצה</h3>
+      <div id="log"></div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0; font-size: 1rem;">תוצאות הניתוח</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>שם בית הספר</th>
+              <th>מזהה (ID)</th>
+              <th>סטטוס מרחק</th>
+              <th>פעולה</th>
+            </tr>
+          </thead>
+          <tbody id="tbody">
+            <tr><td colspan="4" class="muted" style="text-align:center;">לחץ על "התחל ניתוח מרחבי" כדי להציג נתונים</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0; font-size: 1rem;">מפה אינטראקטיבית</h3>
+      <div id="map"></div>
+    </div>
+  </main>
+
+<script>
+const PARKS_URL = 'https://gisn.tel-aviv.gov.il/arcgis/rest/services/WM/IView2WM/MapServer/551';
+const SCHOOLS_URL = 'https://gisn.tel-aviv.gov.il/arcgis/rest/services/WM/IView2WM/MapServer/769';
+
+let map;
+let parksLayer;
+let nearSchoolsGroup = L.layerGroup();
+let farSchoolsGroup = L.layerGroup();
+let analysisResults = [];
+
+function ts() { return new Date().toLocaleTimeString("he-IL", { hour12: false }); }
+
+function log(msg) {
+  const el = document.getElementById("log");
+  el.textContent += `[${ts()}] ${msg}\n`;
+  el.scrollTop = el.scrollHeight;
+}
+
+function setStatus(txt) { document.getElementById("status").textContent = txt; }
+
+// בדיקה וסינון קואורדינטות פגומות למניעת שגיאות Turf.js
+function isValidFeature(f) {
+  if (!f || !f.geometry || !f.geometry.coordinates) return false;
+  const coords = f.geometry.coordinates;
+  if (!Array.isArray(coords) || coords.length === 0) return false;
+  return true;
+}
+
+function initMap() {
+  map = L.map("map").setView([32.0853, 34.7818], 13);
+
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap &copy; CARTO'
+  }).addTo(map);
+
+  nearSchoolsGroup.addTo(map);
+  farSchoolsGroup.addTo(map);
+
+  // טעינה ראשונית של שכבת הגינות למפה
+  parksLayer = L.esri.featureLayer({
+    url: PARKS_URL,
+    style: function () {
+      return { color: '#2e7d32', fillColor: '#4caf50', fillOpacity: 0.4, weight: 1 };
+    }
+  }).addTo(map);
+
+  parksLayer.bindPopup(function (layer) {
+    const props = layer.feature.properties;
+    return `<b>גינה ציבורית:</b> ${props.t_shem || props.SHEM || 'ללא שם'}`;
+  });
+
+  // הוספת מקרא עם כפתורי הפעלה/כיבוי
+  addLegendControl();
+}
+
+function addLegendControl() {
+  const legend = L.control({ position: 'bottomright' });
+
+  legend.onAdd = function () {
+    const div = L.DomUtil.create('div', 'legend-panel');
+    div.innerHTML = `
+      <h4>מקרא ושכבות</h4>
+      <label class="legend-item">
+        <input type="checkbox" id="chkParks" checked />
+        <span class="legend-color legend-poly" style="background: #4caf50;"></span>
+        גינות ציבוריות
+      </label>
+      <label class="legend-item">
+        <input type="checkbox" id="chkNear" checked />
+        <span class="legend-color" style="background: #e65100;"></span>
+        בתי ספר (עד 300מ')
+      </label>
+      <label class="legend-item">
+        <input type="checkbox" id="chkFar" checked />
+        <span class="legend-color" style="background: #0288d1;"></span>
+        בתי ספר (מעל 300מ')
+      </label>
+    `;
+
+    // מניעת זום בלחיצה כפולה על המקרא
+    L.DomEvent.disableClickPropagation(div);
+    return div;
+  };
+
+  legend.addTo(map);
+
+  // אירועי שינוי לתיבות הסימון
+  document.getElementById('chkParks').addEventListener('change', function (e) {
+    if (e.target.checked) map.addLayer(parksLayer);
+    else map.removeLayer(parksLayer);
+  });
+
+  document.getElementById('chkNear').addEventListener('change', function (e) {
+    if (e.target.checked) map.addLayer(nearSchoolsGroup);
+    else map.removeLayer(nearSchoolsGroup);
+  });
+
+  document.getElementById('chkFar').addEventListener('change', function (e) {
+    if (e.target.checked) map.addLayer(farSchoolsGroup);
+    else map.removeLayer(farSchoolsGroup);
+  });
+}
+
+// שליפת GeoJSON בפורמט WGS84
+async function fetchEsriGeoJSON(url) {
+  return new Promise((resolve, reject) => {
+    L.esri.query({ url: url })
+      .where('1=1')
+      .run((error, featureCollection) => {
+        if (error) reject(error);
+        else resolve(featureCollection);
+      });
+  });
+}
+
+async function runAnalysis() {
+  document.getElementById("btnRun").disabled = true;
+  document.getElementById("btnCsv").disabled = true;
+  analysisResults = [];
+  nearSchoolsGroup.clearLayers();
+  farSchoolsGroup.clearLayers();
+  
+  log("מתחיל שליפת נתונים משרת עיריית תל אביב...");
+  setStatus("שולף נתונים...");
+
+  try {
+    const [parksGeoJSON, schoolsGeoJSON] = await Promise.all([
+      fetchEsriGeoJSON(PARKS_URL),
+      fetchEsriGeoJSON(SCHOOLS_URL)
+    ]);
+
+    log(`איסוף נתונים הושלם: נטענו ${parksGeoJSON.features.length} גינות ו-${schoolsGeoJSON.features.length} בתי ספר.`);
+    setStatus("מבצע ניתוח מרחבי (Buffer & Intersect)...");
+
+    const validParkFeatures = parksGeoJSON.features.filter(isValidFeature);
+
+    let nearCount = 0;
+    let farCount = 0;
+
+    schoolsGeoJSON.features.forEach((school) => {
+      if (!isValidFeature(school)) return;
+
+      const schoolName = school.properties.t_shem || school.properties.SHEM || 'בית ספר';
+      const schoolId = school.id || school.properties.OBJECTID || school.properties.oid || '-';
+
+      // יצירת באפר קל בזיכרון של 300 מטר לבית הספר
+      const schoolBuffer = turf.buffer(school, 0.3, { units: 'kilometers' });
+
+      // בדיקת חפיפה (Intersect) מול פוליגוני הגינות
+      let isWithin300m = false;
+      for (let i = 0; i < validParkFeatures.length; i++) {
+        if (turf.booleanIntersects(schoolBuffer, validParkFeatures[i])) {
+          isWithin300m = true;
+          break;
+        }
+      }
+
+      if (isWithin300m) nearCount++; else farCount++;
+
+      analysisResults.push({
+        id: schoolId,
+        name: schoolName,
+        isNear: isWithin300m,
+        feature: school
+      });
+
+      const latlng = [school.geometry.coordinates[1], school.geometry.coordinates[0]];
+      const marker = L.circleMarker(latlng, {
+        radius: isWithin300m ? 7 : 5,
+        fillColor: isWithin300m ? '#e65100' : '#0288d1',
+        color: '#ffffff',
+        weight: 1.5,
+        fillOpacity: 0.85
+      });
+
+      marker.bindPopup(`
+        <b>${schoolName}</b><br>
+        סטטוס: ${isWithin300m ? '<b style="color:#e65100;">✓ עד 300 מטר מגינה</b>' : 'מעל 300 מטר מגינה'}
+      `);
+
+      // שיוך לקבוצת השכבות המתאימה
+      if (isWithin300m) {
+        nearSchoolsGroup.addLayer(marker);
+      } else {
+        farSchoolsGroup.addLayer(marker);
+      }
+    });
+
+    log(`הניתוח הושלם בהצלחה!`);
+    log(`תוצאות: ${nearCount} בתי ספר במרחק עד 300 מטר | ${farCount} בתי ספר במרחק גדול מ-300 מטר.`);
+    setStatus("סיום בהצלחה");
+
+    renderTable();
+    document.getElementById("btnCsv").disabled = false;
+
+  } catch (err) {
+    log(`❌ שגיאה במהלך הניתוח: ${err.message}`);
+    setStatus("שגיאה בהרצה");
+  } finally {
+    document.getElementById("btnRun").disabled = false;
+  }
+}
+
+function renderTable() {
+  const tbody = document.getElementById("tbody");
+  tbody.innerHTML = "";
+
+  analysisResults.forEach((r, idx) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td><b>${r.name}</b></td>
+      <td>${r.id}</td>
+      <td>
+        <span class="badge ${r.isNear ? 'badge-near' : 'badge-far'}">
+          ${r.isNear ? 'עד 300 מטר' : 'מעל 300 מטר'}
+        </span>
+      </td>
+      <td><button onclick="zoomToSchool(${idx})" style="padding: 4px 8px; font-size:12px;">מקד במפה</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function zoomToSchool(idx) {
+  const item = analysisResults[idx];
+  const coords = item.feature.geometry.coordinates;
+  map.setView([coords[1], coords[0]], 17);
+  log(`התמקדות בבית ספר: ${item.name}`);
+}
+
+function downloadCSV() {
+  const headers = ["ID", "School Name", "Within 300m"];
+  const rows = analysisResults.map(r => [
+    r.id,
+    `"${r.name.replace(/"/g, '""')}"`,
+    r.isNear ? "Yes" : "No"
+  ]);
+
+  const csvContent = "\uFEFF" + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "schools_park_proximity_analysis.csv";
+  a.click();
+}
+
+document.getElementById("btnRun").onclick = runAnalysis;
+document.getElementById("btnCsv").onclick = downloadCSV;
+
+initMap();
+log("מערכת מוכנה. לחץ על 'התחל ניתוח מרחבי' לחישוב.");
+</script>
+</body>
+</html>

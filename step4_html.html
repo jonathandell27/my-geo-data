@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>בדיקת חפיפות – תל אביב MapServer</title>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+
+  <style>
+    body { font-family: "Segoe UI", Arial, sans-serif; margin: 0; background: #f4f6f8; color: #222; }
+    header { background: #1a5276; color: #fff; padding: 14px 18px; }
+    header h1 { margin: 0; font-size: 18px; }
+    main { padding: 16px; max-width: 1200px; margin: 0 auto; }
+    .card { background: #fff; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,.08); padding: 14px; margin-bottom: 14px; }
+    button { background: #1a5276; color: #fff; border: 0; border-radius: 8px; padding: 10px 14px; cursor: pointer; font-size: 14px; }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    button.secondary { background: #27ae60; }
+    #log {
+      background: #111; color: #d6ffd6; font-family: Consolas, monospace; font-size: 12px;
+      height: 220px; overflow: auto; padding: 10px; border-radius: 8px; white-space: pre-wrap;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { border-bottom: 1px solid #e5e7eb; padding: 8px; text-align: right; }
+    th { background: #eef3f7; position: sticky; top: 0; }
+    .table-wrap { max-height: 360px; overflow: auto; }
+    .badge { padding: 2px 8px; border-radius: 999px; font-size: 12px; color: #fff; }
+    .full { background: #27ae60; }
+    .partial { background: #3498db; }
+    #map { height: 420px; border-radius: 8px; }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .muted { color: #666; font-size: 13px; }
+
+    /* מסך טעינה */
+    #loadingOverlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.55);
+      z-index: 9999;
+      align-items: center;
+      justify-content: center;
+    }
+    #loadingOverlay.active { display: flex; }
+    .loading-box {
+      background: #fff;
+      border-radius: 12px;
+      padding: 22px 28px;
+      min-width: 260px;
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(0,0,0,.25);
+    }
+    .spinner {
+      width: 42px;
+      height: 42px;
+      border: 4px solid #dbe3ea;
+      border-top-color: #1a5276;
+      border-radius: 50%;
+      margin: 0 auto 12px auto;
+      animation: spin 0.9s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-text { font-size: 15px; font-weight: 600; color: #1a5276; }
+    .loading-sub { margin-top: 6px; font-size: 13px; color: #666; }
+  </style>
+</head>
+<body>
+  <!-- מסך המתנה -->
+  <div id="loadingOverlay">
+    <div class="loading-box">
+      <div class="spinner"></div>
+      <div class="loading-text">טוען נתונים...</div>
+      <div class="loading-sub" id="loadingSub">אנא המתן</div>
+    </div>
+  </div>
+
+  <header>
+    <h1>מציאת ישויות פוליגונליות שחופפות פוליגון נתון</h1>
+  </header>
+
+  <main>
+    <div class="card">
+      <div class="row">
+        <button id="btnRun">התחל בדיקה</button>
+        <button id="btnCsv" class="secondary" disabled>הורד CSV</button>
+        <span id="status" class="muted">מוכן</span>
+      </div>
+      <p class="muted" style="margin-top:10px">
+        השירות: gisn.tel-aviv.gov.il · הקלט: GeoJSON מהתרגיל · סיווג: full / partial
+      </p>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0">לוג הרצה</h3>
+      <div id="log"></div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0">טבלת תוצאות</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Layer Name</th>
+              <th>Layer ID</th>
+              <th>Feature ID</th>
+              <th>Intersect Type</th>
+              <th>מפה</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0">מפה</h3>
+      <div id="map"></div>
+    </div>
+  </main>
+
+<script>
+/**
+ * ==================================================================================
+ * תרגיל: מציאת ישויות פוליגונליות שחופפות פוליגון נתון
+ * ==================================================================================
+ * 1. קריאת Metadata של MapServer
+ * 2. איתור שכבות פוליגונליות
+ * 3. עבור הפוליגון הנתון – מציאת ישויות חופפות + סיווג full/partial
+ * 4. הצגת טבלה + הורדת CSV + מפה
+ * ==================================================================================
+ */
+
+const BASE_URL = "https://gisn.tel-aviv.gov.il/arcgis/rest/services/WM/IView2WM/MapServer";
+
+// הקלט – בדיוק כמו בתרגיל
+const INPUT_GEOJSON = {
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [34.780133, 32.081907],
+          [34.780133, 32.081283],
+          [34.781110, 32.081283],
+          [34.781110, 32.081907],
+          [34.780133, 32.081907]
+        ]]
+      },
+      "properties": { "ID": 0 }
+    }
+  ]
+};
+
+const userFeature = INPUT_GEOJSON.features[0];
+
+let results = [];
+let map, userLayer, resultLayer;
+let fixedBounds = null;
+
+// -----------------------------------------------------------------------------
+// עזרים
+// -----------------------------------------------------------------------------
+function ts() {
+  return new Date().toLocaleTimeString("he-IL", { hour12: false });
+}
+
+function log(msg) {
+  const el = document.getElementById("log");
+  el.textContent += `[${ts()}] ${msg}\n`;
+  el.scrollTop = el.scrollHeight;
+}
+
+function setStatus(text) {
+  document.getElementById("status").textContent = text;
+}
+
+function showLoading(subText = "אנא המתן") {
+  document.getElementById("loadingSub").textContent = subText;
+  document.getElementById("loadingOverlay").classList.add("active");
+}
+
+function hideLoading() {
+  document.getElementById("loadingOverlay").classList.remove("active");
+}
+
+function updateLoading(subText) {
+  document.getElementById("loadingSub").textContent = subText;
+}
+
+// -----------------------------------------------------------------------------
+// חילוץ Feature ID – משופר
+// -----------------------------------------------------------------------------
+function getFeatureId(feature) {
+  // 1) מזהה ברמת ה-Feature (נפוץ ב-GeoJSON של ArcGIS)
+  if (feature.id !== undefined && feature.id !== null && feature.id !== "") {
+    return feature.id;
+  }
+
+  const props = feature.properties || {};
+
+  // 2) שמות שדות נפוצים
+  const preferred = [
+    "OBJECTID", "objectid", "ObjectId",
+    "OID", "oid", "Oid",
+    "FID", "fid", "Fid",
+    "ID", "id", "Id",
+    "OBJECT_ID", "object_id",
+    "FID_", "fid_"
+  ];
+
+  for (const key of preferred) {
+    if (props[key] !== undefined && props[key] !== null && props[key] !== "") {
+      return props[key];
+    }
+  }
+
+  // 3) חיפוש כללי לפי שם שדה
+  for (const key of Object.keys(props)) {
+    const lower = key.toLowerCase();
+    if (
+      lower === "objectid" ||
+      lower === "oid" ||
+      lower === "fid" ||
+      lower.endsWith("objectid") ||
+      lower.includes("object_id")
+    ) {
+      if (props[key] !== undefined && props[key] !== null && props[key] !== "") {
+        return props[key];
+      }
+    }
+  }
+
+  // 4) שדה שמכיל id / מזהה
+  for (const key of Object.keys(props)) {
+    const lower = key.toLowerCase();
+    if ((lower.includes("id") || key.includes("מזהה")) && typeof props[key] !== "object") {
+      if (props[key] !== undefined && props[key] !== null && props[key] !== "") {
+        return props[key];
+      }
+    }
+  }
+
+  return "";
+}
+
+// -----------------------------------------------------------------------------
+// מפה
+// -----------------------------------------------------------------------------
+function initMap() {
+  map = L.map("map").setView([32.0816, 34.7806], 17);
+
+  L.tileLayer(
+    "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    { maxZoom: 19, attribution: "Esri" }
+  ).addTo(map);
+
+  // שכבת תוצאות – מתחת
+  resultLayer = L.layerGroup().addTo(map);
+
+  // הפוליגון הקבוע – מעל (pane ייעודי)
+  map.createPane("userPane");
+  map.getPane("userPane").style.zIndex = 650;
+
+  userLayer = L.geoJSON(INPUT_GEOJSON, {
+    pane: "userPane",
+    style: {
+      color: "#7b241c",
+      weight: 3,
+      fillColor: "#e74c3c",
+      fillOpacity: 0.55
+    }
+  }).addTo(map);
+
+  // זום קבוע על הפוליגון הנתון
+  fixedBounds = userLayer.getBounds().pad(0.35);
+  map.fitBounds(fixedBounds);
+}
+
+function resetMapToUserPolygon() {
+  if (fixedBounds) map.fitBounds(fixedBounds);
+}
+
+// -----------------------------------------------------------------------------
+// שלב 1+2: Metadata + שכבות פוליגון
+// -----------------------------------------------------------------------------
+async function fetchJSON(url) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
+  return res.json();
+}
+
+async function getPolygonLayers() {
+  log("שלב 1: קריאת Metadata...");
+  const meta = await fetchJSON(`${BASE_URL}?f=pjson`);
+  const layers = (meta.layers || []).filter(
+    l => l.type === "Feature Layer" && l.geometryType === "esriGeometryPolygon"
+  );
+  log(`שלב 2: נמצאו ${layers.length} שכבות פוליגון`);
+  return layers.map(l => ({ id: l.id, name: l.name }));
+}
+
+// -----------------------------------------------------------------------------
+// שלב 3: שאילתת חפיפה + סיווג
+// -----------------------------------------------------------------------------
+function arcgisGeometryParam() {
+  return encodeURIComponent(JSON.stringify({
+    rings: userFeature.geometry.coordinates,
+    spatialReference: { wkid: 4326 }
+  }));
+}
+
+async function queryIntersects(layerId) {
+  const qs =
+    `geometry=${arcgisGeometryParam()}` +
+    `&geometryType=esriGeometryPolygon` +
+    `&inSR=4326` +
+    `&spatialRel=esriSpatialRelIntersects` +
+    `&outFields=*` +
+    `&returnGeometry=true` +
+    `&f=geojson` +
+    `&outSR=4326`;
+
+  return fetchJSON(`${BASE_URL}/${layerId}/query?${qs}`);
+}
+
+function classify(feature) {
+  // full = הכלה מלאה, partial = חפיפה חלקית
+  try {
+    if (turf.booleanContains(feature, userFeature) || turf.booleanWithin(userFeature, feature)) {
+      return "full";
+    }
+    return "partial";
+  } catch (e) {
+    return "partial";
+  }
+}
+
+// -----------------------------------------------------------------------------
+// טבלה + מפה + CSV
+// -----------------------------------------------------------------------------
+function renderTable() {
+  const tbody = document.getElementById("tbody");
+  tbody.innerHTML = "";
+
+  results.forEach((r, idx) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${r.layerName}</td>
+      <td>${r.layerId}</td>
+      <td>${r.featureId}</td>
+      <td><span class="badge ${r.intersectType}">${r.intersectType}</span></td>
+      <td><button data-idx="${idx}" class="btnShow">הצג</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  document.querySelectorAll(".btnShow").forEach(btn => {
+    btn.onclick = () => showOnMap(Number(btn.dataset.idx));
+  });
+}
+
+function showOnMap(idx) {
+  const r = results[idx];
+  resultLayer.clearLayers();
+
+  const style = r.intersectType === "full"
+    ? { color: "#1e8449", weight: 2.5, fillColor: "#27ae60", fillOpacity: 0.7 }
+    : { color: "#1a5276", weight: 1.5, fillColor: "#3498db", fillOpacity: 0.4 };
+
+  // תוצאה מתחת
+  const layer = L.geoJSON(r.feature, { style });
+  layer.bindPopup(
+    `<b>${r.layerName}</b><br>Feature ID: ${r.featureId}<br>Type: ${r.intersectType}`
+  );
+  resultLayer.addLayer(layer);
+
+  // זום תמיד על הפוליגון הקבוע; הוא נשאר מעל ב-userPane
+  resetMapToUserPolygon();
+
+  log(`מציג במפה: ${r.layerName} / ${r.featureId} (${r.intersectType})`);
+}
+
+function downloadCSV() {
+  const header = ["Layer Name", "Layer ID", "Feature ID", "Intersect Type"];
+  const lines = [header.join(",")];
+
+  results.forEach(r => {
+    const row = [
+      `"${String(r.layerName).replaceAll('"', '""')}"`,
+      r.layerId,
+      r.featureId,
+      r.intersectType
+    ];
+    lines.push(row.join(","));
+  });
+
+  const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "intersecting_features_summary.csv";
+  a.click();
+}
+
+// -----------------------------------------------------------------------------
+// הרצה ראשית
+// -----------------------------------------------------------------------------
+async function run() {
+  results = [];
+  document.getElementById("tbody").innerHTML = "";
+  document.getElementById("btnCsv").disabled = true;
+  document.getElementById("btnRun").disabled = true;
+  resultLayer.clearLayers();
+  resetMapToUserPolygon();
+
+  setStatus("רץ...");
+  showLoading("מתחיל...");
+  log("===== התחלת הרצה =====");
+
+  try {
+    updateLoading("קורא Metadata...");
+    const layers = await getPolygonLayers();
+
+    log("שלב 3: בדיקת חפיפות לכל שכבה...");
+
+    for (let i = 0; i < layers.length; i++) {
+      const layer = layers[i];
+      const progress = `שכבה ${i + 1}/${layers.length}: ${layer.name}`;
+      setStatus(progress);
+      updateLoading(progress);
+
+      log(`[${String(i + 1).padStart(2, "0")}/${layers.length}] ${layer.id} – ${layer.name}`);
+
+      try {
+        const geojson = await queryIntersects(layer.id);
+        const features = geojson.features || [];
+
+        if (!features.length) {
+          log("         אין חפיפה");
+          continue;
+        }
+
+        let full = 0, partial = 0;
+
+        for (const f of features) {
+          const t = classify(f);
+          if (t === "full") full++; else partial++;
+
+          results.push({
+            layerName: layer.name,
+            layerId: layer.id,
+            featureId: getFeatureId(f),   // ← מעבירים את כל ה-feature
+            intersectType: t,
+            feature: f
+          });
+        }
+
+        log(`         full=${full} | partial=${partial}`);
+      } catch (e) {
+        log(`         שגיאה: ${e.message}`);
+      }
+    }
+
+    renderTable();
+    document.getElementById("btnCsv").disabled = results.length === 0;
+
+    log("שלב 4: טבלה מוכנה");
+    log(`סה״כ רשומות: ${results.length}`);
+    log(`full: ${results.filter(r => r.intersectType === "full").length}`);
+    log(`partial: ${results.filter(r => r.intersectType === "partial").length}`);
+    log("===== סיום =====");
+    setStatus("הסתיים");
+  } catch (e) {
+    log("שגיאה כללית: " + e.message);
+    log("אם זו שגיאת CORS – השרת לא מאפשר קריאות מדף HTML מקומי/דומיין אחר.");
+    setStatus("שגיאה");
+  } finally {
+    hideLoading();
+    document.getElementById("btnRun").disabled = false;
+  }
+}
+
+document.getElementById("btnRun").onclick = run;
+document.getElementById("btnCsv").onclick = downloadCSV;
+
+initMap();
+log("מוכן. לחץ על 'התחל בדיקה'.");
+</script>
+</body>
+</html>

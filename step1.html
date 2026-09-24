@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MapLibre – GeoPackage ו-GeoParquet מול GeoJSON</title>
+
+  <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.11.0/sql-wasm.js"></script>
+
+  <style>
+    :root {
+      --primary: #1b365d;
+      --good: #16a34a;
+      --warn: #d97706;
+      --bad: #dc2626;
+      --bg: #f1f5f9;
+      --card: #fff;
+      --border: #e2e8f0;
+      --muted: #64748b;
+      --side-w: 420px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; overflow: hidden; }
+    body {
+      font-family: "Segoe UI", system-ui, Arial, sans-serif;
+      background: var(--bg);
+      color: #1e293b;
+      font-size: 14px;
+    }
+
+    #intro {
+      position: fixed; inset: 0; z-index: 1000;
+      background: linear-gradient(160deg, #0f172a 0%, #1b365d 55%, #1e3a5f 100%);
+      color: #e2e8f0;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 20px 14px 28px;
+      /* לא ממורכז אנכית – כדי שתוכן ארוך לא ייחתך מלמעלה */
+    }
+    .intro-box {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 16px;
+      padding: 22px 26px;
+      max-width: 820px; width: 100%;
+      margin: 0 auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+    }
+    .intro-box h1 { font-size: 1.2rem; font-weight: 800; color: #fff; margin-bottom: 4px; }
+    .intro-box .sub { font-size: 0.8rem; color: #94a3b8; margin-bottom: 12px; }
+    .intro-q {
+      background: rgba(255,255,255,0.07);
+      border-radius: 10px; padding: 11px 13px; margin-bottom: 12px;
+      border-right: 4px solid #38bdf8;
+      font-size: 0.85rem; line-height: 1.5; color: #cbd5e1;
+    }
+    .intro-q strong { color: #f8fafc; }
+
+    .fmt-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    @media (max-width: 600px) { .fmt-grid { grid-template-columns: 1fr; } }
+    .fmt-card {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 11px;
+      padding: 12px 13px;
+    }
+    .fmt-card h3 {
+      font-size: 0.9rem; font-weight: 700; color: #7dd3fc;
+      margin-bottom: 8px;
+    }
+    .fmt-card .lbl {
+      font-size: 0.68rem; font-weight: 700; color: #94a3b8;
+      text-transform: uppercase; margin: 6px 0 2px;
+    }
+    .fmt-card ul { padding-right: 14px; }
+    .fmt-card li { font-size: 0.76rem; line-height: 1.4; color: #cbd5e1; margin-bottom: 1px; }
+
+    .size-box {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 11px;
+      padding: 12px 14px;
+      margin-bottom: 12px;
+    }
+    .size-box h3 {
+      font-size: 0.88rem; font-weight: 700; color: #fbbf24;
+      margin-bottom: 8px;
+    }
+    .size-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+    }
+    .size-item {
+      background: rgba(0,0,0,0.25);
+      border-radius: 8px;
+      padding: 10px 8px;
+      text-align: center;
+    }
+    .size-item .name { font-size: 0.72rem; color: #94a3b8; font-weight: 600; }
+    .size-item .val {
+      font-size: 1.15rem; font-weight: 800; color: #fff;
+      margin-top: 3px; font-variant-numeric: tabular-nums;
+    }
+    .size-item .hint { font-size: 0.65rem; color: #64748b; margin-top: 2px; }
+    .size-item.big .val { color: #f87171; }
+    .size-item.small .val { color: #4ade80; }
+    .size-status {
+      font-size: 0.75rem; color: #94a3b8; margin-top: 8px; min-height: 18px;
+    }
+
+    /* Preview */
+    .preview-box {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 11px;
+      padding: 12px 14px;
+      margin-bottom: 12px;
+      display: none;
+    }
+    .preview-box.visible { display: block; }
+    .preview-box h3 {
+      font-size: 0.88rem; font-weight: 700; color: #a5b4fc;
+      margin-bottom: 8px;
+    }
+    .preview-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+    }
+    @media (max-width: 600px) { .preview-grid { grid-template-columns: 1fr; } }
+    .preview-item {
+      background: rgba(0,0,0,0.3);
+      border-radius: 8px;
+      padding: 8px 10px;
+    }
+    .preview-item .pname {
+      font-size: 0.72rem; font-weight: 700; color: #7dd3fc;
+      margin-bottom: 4px;
+    }
+    .preview-item pre {
+      font-family: Consolas, monospace;
+      font-size: 0.65rem;
+      color: #cbd5e1;
+      white-space: pre-wrap;
+      word-break: break-all;
+      line-height: 1.35;
+      max-height: 110px;
+      overflow-y: auto;
+      margin: 0;
+    }
+
+    .note {
+      background: rgba(56,189,248,0.12);
+      border: 1px solid rgba(56,189,248,0.3);
+      border-radius: 8px;
+      padding: 9px 11px;
+      font-size: 0.76rem;
+      color: #bae6fd;
+      line-height: 1.45;
+      margin-bottom: 12px;
+    }
+    .note a { color: #7dd3fc; }
+
+    .intro-btn {
+      display: block; width: 100%;
+      background: #0ea5e9; color: #fff; border: 0;
+      border-radius: 10px; padding: 12px 16px;
+      font-size: 0.9rem; font-weight: 700; cursor: pointer;
+      text-align: center;
+    }
+    .intro-btn:hover { background: #0284c7; }
+    .intro-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .app { display: none; height: 100vh; position: relative; }
+    .app.visible { display: block; }
+
+    .side {
+      position: absolute; top: 0; bottom: 0; right: 0;
+      width: var(--side-w);
+      display: flex; flex-direction: column;
+      background: var(--card);
+      border-left: 1px solid var(--border);
+      overflow: hidden; z-index: 2;
+    }
+    .side-header {
+      background: var(--primary); color: #fff;
+      padding: 10px 12px; flex-shrink: 0;
+    }
+    .side-header h1 { font-size: 0.9rem; font-weight: 700; }
+    .side-header p { font-size: 0.68rem; color: #94a3b8; margin-top: 1px; }
+    .side-scroll { flex: 1; overflow-y: auto; padding: 8px; }
+
+    .divider {
+      position: absolute; top: 0; bottom: 0; width: 6px;
+      cursor: col-resize; z-index: 5;
+    }
+    .divider:hover, .divider.dragging { background: #93c5fd; }
+    .divider::after {
+      content: ""; position: absolute; top: 50%; left: 1px;
+      transform: translateY(-50%); width: 4px; height: 40px;
+      border-radius: 2px; background: #cbd5e1;
+    }
+    .divider:hover::after, .divider.dragging::after { background: #3b82f6; }
+
+    .map-wrap {
+      position: absolute; top: 0; bottom: 0; left: 0;
+      right: var(--side-w); background: #e2e8f0;
+    }
+    #map { width: 100%; height: 100%; }
+
+    .card {
+      background: #f8fafc; border: 1px solid var(--border);
+      border-radius: 9px; padding: 8px; margin-bottom: 7px;
+    }
+    .card h3 {
+      font-size: 0.74rem; font-weight: 700; color: var(--primary);
+      margin-bottom: 6px;
+    }
+
+    .metrics {
+      display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px;
+    }
+    .m-box {
+      background: #fff; border: 1px solid var(--border);
+      border-radius: 6px; padding: 5px 2px; text-align: center;
+    }
+    .m-val { font-size: 0.95rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+    .m-lbl { font-size: 0.55rem; color: var(--muted); font-weight: 600; text-transform: uppercase; }
+    .good { color: var(--good) !important; }
+    .warn { color: var(--warn) !important; }
+    .bad  { color: var(--bad) !important; }
+
+    button.action {
+      background: var(--primary); color: #fff; border: 0;
+      border-radius: 6px; padding: 8px; cursor: pointer;
+      font-size: 12px; font-weight: 600; width: 100%;
+      margin-bottom: 5px;
+    }
+    button.action:hover:not(:disabled) { opacity: 0.9; }
+    button.action:disabled { opacity: 0.4; cursor: not-allowed; }
+    button.green { background: #16a34a; }
+    button.gray { background: #64748b; }
+
+    .info-box {
+      background: #eff6ff; border: 1px solid #bfdbfe;
+      border-radius: 7px; padding: 8px 10px;
+      font-size: 0.72rem; color: #1e40af; line-height: 1.45;
+      margin-bottom: 8px;
+    }
+    .warn-box {
+      background: #fff7ed; border: 1px solid #fed7aa;
+      border-radius: 7px; padding: 8px 10px;
+      font-size: 0.72rem; color: #9a3412; line-height: 1.45;
+      margin-bottom: 8px;
+    }
+
+    #log {
+      background: #0f172a; color: #7dd3fc;
+      font-family: Consolas, monospace; font-size: 10px;
+      height: 100px; overflow-y: auto; padding: 5px;
+      border-radius: 6px; white-space: pre-wrap; line-height: 1.4;
+    }
+    .log-ok { color: #4ade80; }
+    .log-warn { color: #fbbf24; }
+    .log-bad { color: #f87171; }
+
+    .status-line {
+      font-size: 0.7rem; font-weight: 600; color: var(--primary);
+      min-height: 16px; margin-top: 2px;
+    }
+  </style>
+</head>
+<body>
+
+<div id="intro">
+  <div class="intro-box">
+    <h1>10,000 מבנים – שתי חלופות ל-GeoJSON</h1>
+    <p class="sub">GeoPackage ו-GeoParquet · יתרונות, חסרונות ומימוש</p>
+
+    <div class="intro-q">
+      <strong>המצב:</strong> צריך להציג כ־10,000 פוליגונים. GeoJSON עובד, אבל כבד.<br>
+      <strong>בחרתי שתי חלופות:</strong> GeoPackage ו-GeoParquet.
+    </div>
+
+    <div class="fmt-grid">
+      <div class="fmt-card">
+        <h3>1. GeoPackage (.gpkg)</h3>
+        <div class="lbl">יתרונות</div>
+        <ul>
+          <li>קובץ אחד, קומפקטי יחסית</li>
+          <li>סטנדרט OGC – עובד ב-QGIS</li>
+          <li>תומך בכמה שכבות באותו קובץ</li>
+          <li>נוח לאחסון ולהעברה</li>
+        </ul>
+        <div class="lbl">חסרונות</div>
+        <ul>
+          <li>MapLibre לא טוען אותו ישירות בדפדפן</li>
+          <li>צריך המרה לפני תצוגה ב-web</li>
+        </ul>
+        <div class="lbl">איך מממשים</div>
+        <ul>
+          <li>ייצוא מ-GeoPandas / QGIS ל-.gpkg</li>
+          <li>בשרת: המרה ל-GeoJSON או ל-Vector Tiles</li>
+          <li>ואז טעינה ב-MapLibre</li>
+        </ul>
+      </div>
+
+      <div class="fmt-card">
+        <h3>2. GeoParquet (.parquet)</h3>
+        <div class="lbl">יתרונות</div>
+        <ul>
+          <li>דחוס מאוד – קבצים קטנים</li>
+          <li>מהיר לקריאה ולסינון עמודות</li>
+          <li>מצוין לנתונים גדולים</li>
+        </ul>
+        <div class="lbl">חסרונות</div>
+        <ul>
+          <li>MapLibre לא טוען אותו ישירות</li>
+          <li>בדפדפן צריך ספריות נוספות (WASM)</li>
+        </ul>
+        <div class="lbl">איך מממשים</div>
+        <ul>
+          <li>ייצוא מ-GeoPandas ל-.parquet</li>
+          <li>בשרת: המרה ל-tiles או GeoJSON מסונן</li>
+          <li>או קריאה בדפדפן עם WASM (מתקדם)</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="size-box">
+      <h3>בדיקה מה-GitHub – גודל + תצוגה מקדימה</h3>
+      <p style="font-size:0.75rem;color:#94a3b8;margin-bottom:8px">
+        אותם ~10,000 מבנים. ה-GitHub מדמה צד שרת. מודדים גודל אמיתי (לא gzip).
+      </p>
+      <div class="size-row">
+        <div class="size-item" id="szGeo">
+          <div class="name">GeoJSON</div>
+          <div class="val">—</div>
+          <div class="hint">tlv_buildings.geojson</div>
+        </div>
+        <div class="size-item" id="szGpkg">
+          <div class="name">GeoPackage</div>
+          <div class="val">—</div>
+          <div class="hint">tlv_buildings.gpkg</div>
+        </div>
+        <div class="size-item" id="szParq">
+          <div class="name">GeoParquet</div>
+          <div class="val">—</div>
+          <div class="hint">tlv_buildings.parquet</div>
+        </div>
+      </div>
+      <div class="size-status" id="sizeStatus">לחץ על הכפתור למטה</div>
+    </div>
+
+    <div class="preview-box" id="previewBox">
+      <h3>מה יש בתוך הקבצים</h3>
+      <div class="preview-grid">
+        <div class="preview-item">
+          <div class="pname">GeoJSON – רשומה ראשונה</div>
+          <pre id="prevGeo">—</pre>
+        </div>
+        <div class="preview-item">
+          <div class="pname">GeoPackage – נתונים מהקובץ</div>
+          <pre id="prevGpkg">—</pre>
+        </div>
+        <div class="preview-item">
+          <div class="pname">GeoParquet – נתונים מהקובץ</div>
+          <pre id="prevParq">—</pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="preview-box" id="queryBox" style="display:none">
+      <h3>שאילתה משותפת – אותם נתונים?</h3>
+      <p style="font-size:0.75rem;color:#94a3b8;margin-bottom:8px">
+        מחפשים את אותה רשומה בשלושת הקבצים (למשל oid_mivne = 1).
+      </p>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
+        <label style="font-size:0.75rem;color:#cbd5e1">שדה:</label>
+        <input id="qField" value="oid_mivne" style="width:110px;padding:5px 8px;border-radius:6px;border:1px solid #475569;background:#0f172a;color:#e2e8f0;font-size:0.8rem" />
+        <label style="font-size:0.75rem;color:#cbd5e1">=</label>
+        <input id="qValue" value="1" style="width:70px;padding:5px 8px;border-radius:6px;border:1px solid #475569;background:#0f172a;color:#e2e8f0;font-size:0.8rem" />
+        <button type="button" id="btnQuery" style="background:#8b5cf6;color:#fff;border:0;border-radius:6px;padding:6px 12px;font-size:0.78rem;font-weight:700;cursor:pointer">חפש בשלושתם</button>
+      </div>
+      <div class="preview-grid">
+        <div class="preview-item">
+          <div class="pname">GeoJSON</div>
+          <pre id="qGeo">—</pre>
+        </div>
+        <div class="preview-item">
+          <div class="pname">GeoPackage</div>
+          <pre id="qGpkg">—</pre>
+        </div>
+        <div class="preview-item">
+          <div class="pname">GeoParquet</div>
+          <pre id="qParq">—</pre>
+        </div>
+      </div>
+      <div class="size-status" id="queryStatus" style="margin-top:8px"></div>
+    </div>
+
+    <div class="note">
+      הקבצים ב-
+      <a href="https://github.com/jonathandell27/my-geo-data" target="_blank">github.com/jonathandell27/my-geo-data</a>.
+      <br>
+      <strong>חשוב:</strong> במפה אפשר להציג כרגע רק את ה-GeoJSON.
+      GPKG ו-Parquet נשארים בשרת – קטנים יותר, ומשם ממירים לתצוגה.
+    </div>
+
+    <button class="intro-btn" id="btnCheck">בדוק גדלים ותצוגה מקדימה</button>
+    <button class="intro-btn" id="btnStart" style="margin-top:8px;background:#16a34a" disabled>
+      המשך למפה (רק GeoJSON) ←
+    </button>
+  </div>
+</div>
+
+<div class="app" id="app">
+  <div class="map-wrap" id="mapWrap">
+    <div id="map"></div>
+  </div>
+
+  <div class="divider" id="divider" title="גרור לשינוי גודל"></div>
+
+  <div class="side" id="side">
+    <div class="side-header">
+      <h1>תצוגה במפה – GeoJSON בלבד</h1>
+      <p>10,000 מבנים מתל אביב · מה-GitHub</p>
+    </div>
+
+    <div class="side-scroll">
+
+      <div class="card">
+        <h3>מדדים</h3>
+        <div class="metrics">
+          <div class="m-box"><div class="m-lbl">FPS</div><div id="mFps" class="m-val good">--</div></div>
+          <div class="m-box"><div class="m-lbl">Frame</div><div id="mFrame" class="m-val">--</div></div>
+          <div class="m-box"><div class="m-lbl">זיכרון</div><div id="mMem" class="m-val">N/A</div></div>
+          <div class="m-box"><div class="m-lbl">ישויות</div><div id="mCount" class="m-val">0</div></div>
+          <div class="m-box"><div class="m-lbl">Idle</div><div id="mIdle" class="m-val">--</div></div>
+          <div class="m-box"><div class="m-lbl">מצב</div><div id="mMode" class="m-val" style="font-size:0.68rem">ריק</div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>מה רואים כאן</h3>
+        <div class="warn-box">
+          במפה מוצג <strong>רק ה-GeoJSON</strong>.
+          GeoPackage ו-GeoParquet לא נטענים ישירות ב-MapLibre בדפדפן –
+          הם נשארים בצד השרת (אצלנו: GitHub) כי הם קטנים יותר.
+        </div>
+        <div class="info-box">
+          הלחצן למטה טוען את קובץ ה-GeoJSON מה-GitHub.
+          אפשר לראות איך 10,000 פוליגונים משפיעים על הביצועים.
+        </div>
+
+        <button class="action green" id="btnLoad">טען GeoJSON למפה</button>
+        <button class="action gray" id="btnClear" disabled>נקה שכבה</button>
+        <div class="status-line" id="status"></div>
+      </div>
+
+      <div class="card">
+        <h3>לוג</h3>
+        <div id="log"></div>
+      </div>
+
+      <div class="card">
+        <h3>סיכום קצר לתרגיל</h3>
+        <div style="font-size:0.72rem;line-height:1.45;color:#334155">
+          <ul style="padding-right:14px;margin:0">
+            <li><strong>GeoPackage / GeoParquet</strong> – טובים לאחסון בשרת (קבצים קטנים יותר).</li>
+            <li><strong>במפה בדפדפן</strong> – MapLibre טוען ישירות GeoJSON (או Vector Tiles / PMTiles).</li>
+            <li><strong>מימוש מומלץ:</strong> שומרים GPKG/Parquet בשרת → ממירים ל-tiles או ל-GeoJSON מסונן → מציגים ב-MapLibre.</li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+const FILES = {
+  geojson: "https://raw.githubusercontent.com/jonathandell27/my-geo-data/main/tlv_buildings.geojson",
+  gpkg:    "https://raw.githubusercontent.com/jonathandell27/my-geo-data/main/tlv_buildings.gpkg",
+  parquet: "https://raw.githubusercontent.com/jonathandell27/my-geo-data/main/tlv_buildings.parquet"
+};
+const CENTER = [34.7818, 32.0853];
+
+let map, mapReady = false;
+let frameCount = 0, lastFpsUpdate = performance.now(), lastFrameTs = performance.now();
+let currentFps = 60, currentFrameTime = 16.6;
+
+(function () {
+  const divider = document.getElementById("divider");
+  let dragging = false;
+  divider.style.right = getComputedStyle(document.documentElement).getPropertyValue("--side-w").trim();
+  function setW(w) {
+    w = Math.max(280, Math.min(window.innerWidth - 180, w));
+    document.documentElement.style.setProperty("--side-w", w + "px");
+    divider.style.right = w + "px";
+    if (map) map.resize();
+  }
+  divider.addEventListener("mousedown", e => { dragging = true; divider.classList.add("dragging"); e.preventDefault(); });
+  window.addEventListener("mousemove", e => { if (dragging) setW(window.innerWidth - e.clientX); });
+  window.addEventListener("mouseup", () => {
+    if (dragging) { dragging = false; divider.classList.remove("dragging"); if (map) map.resize(); }
+  });
+})();
+
+function ts() { return new Date().toLocaleTimeString("he-IL", { hour12: false }); }
+function log(msg, type) {
+  const el = document.getElementById("log");
+  const c = type === "ok" ? "log-ok" : type === "warn" ? "log-warn" : type === "bad" ? "log-bad" : "";
+  el.innerHTML += `<span class="${c}">[${ts()}] ${msg}</span>\n`;
+  el.scrollTop = el.scrollHeight;
+}
+function setStatus(t) { document.getElementById("status").textContent = t; }
+
+function fmtSize(bytes) {
+  if (bytes >= 1e6) return (bytes / 1e6).toFixed(1) + " MB";
+  return (bytes / 1024).toFixed(0) + " KB";
+}
+
+function bytesToAscii(buf, maxLen) {
+  const u8 = new Uint8Array(buf, 0, Math.min(maxLen, buf.byteLength));
+  let s = "";
+  for (let i = 0; i < u8.length; i++) {
+    const c = u8[i];
+    s += (c >= 32 && c < 127) ? String.fromCharCode(c) : ".";
+  }
+  return s;
+}
+
+async function checkSizes() {
+  const btn = document.getElementById("btnCheck");
+  const st = document.getElementById("sizeStatus");
+  btn.disabled = true;
+  st.textContent = "מוריד ובדק (גודל אמיתי)...";
+
+  const ids = { geojson: "szGeo", gpkg: "szGpkg", parquet: "szParq" };
+  const results = {};
+  const buffers = {};
+
+  for (const [key, url] of Object.entries(FILES)) {
+    try {
+      st.textContent = "מוריד " + key + "...";
+      const res = await fetch(url + "?t=" + Date.now());
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const buf = await res.arrayBuffer();
+      results[key] = buf.byteLength;
+      buffers[key] = buf;
+
+      const el = document.getElementById(ids[key]);
+      el.querySelector(".val").textContent = fmtSize(buf.byteLength);
+      el.classList.remove("big", "small");
+    } catch (e) {
+      document.getElementById(ids[key]).querySelector(".val").textContent = "שגיאה";
+      st.textContent = "שגיאה: " + e.message;
+    }
+  }
+
+  // תצוגה מקדימה + שמירת באפרים לשאילתה
+  window._bufs = buffers;
+  document.getElementById("previewBox").classList.add("visible");
+  document.getElementById("queryBox").style.display = "block";
+
+  // GeoJSON – רשומה ראשונה
+  try {
+    const text = new TextDecoder().decode(buffers.geojson);
+    const data = JSON.parse(text);
+    const n = (data.features || []).length;
+    const f = data.features[0];
+    const props = f.properties || {};
+    // שדות משותפים שמופיעים גם ב-GPKG/Parquet (אותו מקור)
+    const keys = Object.keys(props).slice(0, 8);
+    let sample = "features: " + n.toLocaleString("he-IL") + "\n";
+    sample += "geometry: " + (f.geometry && f.geometry.type) + "\n";
+    sample += "properties:\n";
+    keys.forEach(k => {
+      let v = props[k];
+      if (v != null && String(v).length > 30) v = String(v).slice(0, 28) + "…";
+      sample += "  " + k + ": " + v + "\n";
+    });
+    document.getElementById("prevGeo").textContent = sample.trim();
+  } catch (e) {
+    document.getElementById("prevGeo").textContent = "שגיאה בקריאה: " + e.message;
+  }
+
+  // GeoPackage – sql.js (SQLite)
+  try {
+    st.textContent = "קורא GeoPackage (sql.js)...";
+    const SQL = await initSqlJs({
+      locateFile: f => "https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.11.0/" + f
+    });
+    const db = new SQL.Database(new Uint8Array(buffers.gpkg));
+    const tables = db.exec("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE 'gpkg_%' AND name NOT LIKE 'rtree_%'");
+    const tableNames = (tables[0] && tables[0].values) ? tables[0].values.map(r => r[0]) : [];
+    let out = "✓ GeoPackage (SQLite)\n";
+    out += "טבלאות: " + (tableNames.slice(0, 5).join(", ") || "(לא נמצא)") + "\n";
+    // נסה לקרוא שורות מהטבלה הראשונה (בלי עמודת geometry)
+    if (tableNames.length) {
+      const t = tableNames[0];
+      const colsInfo = db.exec("PRAGMA table_info(" + JSON.stringify(t) + ")");
+      const cols = (colsInfo[0] && colsInfo[0].values) ? colsInfo[0].values.map(r => r[1]) : [];
+      const attrCols = cols.filter(c => !/geom|geometry|shape/i.test(c)).slice(0, 6);
+      out += "עמודות: " + attrCols.join(", ") + "\n";
+      if (attrCols.length) {
+        const q = "SELECT " + attrCols.map(c => '"' + c + '"').join(",") + " FROM \"" + t + "\" LIMIT 2";
+        const rows = db.exec(q);
+        if (rows[0] && rows[0].values) {
+          rows[0].values.forEach((row, i) => {
+            out += "שורה " + (i+1) + ": ";
+            out += row.map((v, j) => attrCols[j] + "=" + (v == null ? "null" : String(v).slice(0, 20))).join(", ");
+            out += "\n";
+          });
+        }
+      }
+    }
+    db.close();
+    document.getElementById("prevGpkg").textContent = out.trim();
+  } catch (e) {
+    // fallback לכותרת
+    try {
+      const head = bytesToAscii(buffers.gpkg, 32);
+      document.getElementById("prevGpkg").textContent =
+        "כותרת: " + head.slice(0, 20) + "\n(לא הצלחנו לקרוא טבלאות: " + e.message + ")";
+    } catch (e2) {
+      document.getElementById("prevGpkg").textContent = "שגיאה: " + e.message;
+    }
+  }
+
+  // GeoParquet – hyparquet
+  try {
+    st.textContent = "קורא GeoParquet (hyparquet)...";
+    const { parquetReadObjects } = await import("https://cdn.jsdelivr.net/npm/hyparquet@1.8.2/+esm");
+    const file = {
+      byteLength: buffers.parquet.byteLength,
+      slice: (start, end) => buffers.parquet.slice(start, end)
+    };
+    const rows = await parquetReadObjects({ file, rowStart: 0, rowEnd: 2 });
+    let out = "✓ GeoParquet\n";
+    if (rows && rows.length) {
+      const keys = Object.keys(rows[0]).filter(k => !/geom|geometry|wkb/i.test(k)).slice(0, 8);
+      out += "עמודות: " + keys.join(", ") + "\n";
+      rows.forEach((row, i) => {
+        out += "שורה " + (i+1) + ": ";
+        out += keys.map(k => {
+          let v = row[k];
+          if (v != null && String(v).length > 18) v = String(v).slice(0, 16) + "…";
+          return k + "=" + v;
+        }).join(", ");
+        out += "\n";
+      });
+    } else {
+      out += "(אין שורות)\n";
+    }
+    document.getElementById("prevParq").textContent = out.trim();
+  } catch (e) {
+    try {
+      const head = bytesToAscii(buffers.parquet, 16);
+      document.getElementById("prevParq").textContent =
+        "כותרת: " + head.slice(0, 8) + "\n(לא הצלחנו לקרוא: " + e.message + ")";
+    } catch (e2) {
+      document.getElementById("prevParq").textContent = "שגיאה: " + e.message;
+    }
+  }
+
+  if (results.geojson && results.gpkg && results.parquet) {
+    const arr = [
+      { el: "szGeo", v: results.geojson },
+      { el: "szGpkg", v: results.gpkg },
+      { el: "szParq", v: results.parquet }
+    ];
+    arr.sort((a, b) => b.v - a.v);
+    document.getElementById(arr[0].el).classList.add("big");
+    document.getElementById(arr[2].el).classList.add("small");
+
+    const ratioG = (results.geojson / results.gpkg).toFixed(1);
+    const ratioP = (results.geojson / results.parquet).toFixed(1);
+    st.innerHTML =
+      "GeoJSON ≈ <strong>" + fmtSize(results.geojson) + "</strong> · " +
+      "GPKG ≈ <strong>" + fmtSize(results.gpkg) + "</strong> · " +
+      "Parquet ≈ <strong>" + fmtSize(results.parquet) + "</strong><br>" +
+      "GeoJSON גדול פי <strong>" + ratioG + "</strong> מ-GPKG " +
+      "ופי <strong>" + ratioP + "</strong> מ-Parquet.";
+  } else {
+    st.textContent = "הבדיקה הסתיימה.";
+  }
+
+  document.getElementById("btnStart").disabled = false;
+  btn.disabled = false;
+  document.getElementById("intro").scrollTop = 0;
+}
+
+
+
+const WKB_TYPES = {1:"Point",2:"LineString",3:"Polygon",4:"MultiPoint",5:"MultiLineString",6:"MultiPolygon",7:"GeometryCollection"};
+function wkbTypeName(bytes) {
+  // bytes: Uint8Array or ArrayBuffer
+  if (!bytes) return null;
+  const u8 = bytes instanceof ArrayBuffer ? new Uint8Array(bytes) : (bytes.buffer ? new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength) : new Uint8Array(bytes));
+  if (u8.length < 5) return null;
+  // optional GP packing header in GPKG - skip if looks like it
+  let off = 0;
+  // GeoPackageBinary header: magic 0x47 0x50
+  if (u8[0] === 0x47 && u8[1] === 0x50) {
+    // flags at byte 3, envelope indicator
+    const flags = u8[3];
+    const env = (flags >> 1) & 7;
+    const envSizes = [0, 32, 48, 48, 64, 32]; // doubles * 8 roughly - actually envelope is doubles
+    // simpler: find WKB after header - variable; try offset 8+ 
+    // GPKG binary: 2 magic + 1 version + 1 flags + 4 srs_id + optional envelope
+    let eSize = 0;
+    if (env === 1) eSize = 32;
+    else if (env === 2 || env === 3) eSize = 48;
+    else if (env === 4) eSize = 64;
+    off = 8 + eSize;
+  }
+  if (off + 5 > u8.length) return null;
+  const byteOrder = u8[off]; // 0=BE, 1=LE
+  let type;
+  if (byteOrder === 1) {
+    type = u8[off+1] | (u8[off+2]<<8) | (u8[off+3]<<16) | (u8[off+4]<<24);
+  } else {
+    type = (u8[off+1]<<24) | (u8[off+2]<<16) | (u8[off+3]<<8) | u8[off+4];
+  }
+  type = type & 0xFF; // strip ISO/EWKB flags for basic type
+  return WKB_TYPES[type] || ("type#" + type);
+}
+
+function formatRow(obj, maxKeys) {
+  const keys = Object.keys(obj).filter(k => !/geom|geometry|wkb|shape/i.test(k)).slice(0, maxKeys || 8);
+  return keys.map(k => {
+    let v = obj[k];
+    if (v != null && String(v).length > 24) v = String(v).slice(0, 22) + "…";
+    return k + ": " + v;
+  }).join("\n");
+}
+
+async function runSharedQuery() {
+  const field = (document.getElementById("qField").value || "oid_mivne").trim();
+  const value = (document.getElementById("qValue").value || "1").trim();
+  const st = document.getElementById("queryStatus");
+  const bufs = window._bufs;
+  if (!bufs || !bufs.geojson) {
+    st.textContent = "קודם לחץ על בדיקת גדלים";
+    return;
+  }
+  st.textContent = "מחפש " + field + " = " + value + " ...";
+  document.getElementById("qGeo").textContent = "…";
+  document.getElementById("qGpkg").textContent = "…";
+  document.getElementById("qParq").textContent = "…";
+
+  // GeoJSON
+  try {
+    const data = JSON.parse(new TextDecoder().decode(bufs.geojson));
+    const numVal = Number(value);
+    const hit = (data.features || []).find(f => {
+      const p = f.properties || {};
+      const v = p[field];
+      return v == value || v == numVal || String(v) === value;
+    });
+    if (hit) {
+      document.getElementById("qGeo").textContent =
+        "✓ נמצא\n" + formatRow(hit.properties || {}) +
+        "\ngeometry: " + (hit.geometry && hit.geometry.type);
+    } else {
+      document.getElementById("qGeo").textContent = "לא נמצא (" + field + "=" + value + ")";
+    }
+  } catch (e) {
+    document.getElementById("qGeo").textContent = "שגיאה: " + e.message;
+  }
+
+  // GeoPackage
+  try {
+    const SQL = await initSqlJs({
+      locateFile: f => "https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.11.0/" + f
+    });
+    const db = new SQL.Database(new Uint8Array(bufs.gpkg));
+    const tables = db.exec("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE 'gpkg_%' AND name NOT LIKE 'rtree_%'");
+    const tableNames = (tables[0] && tables[0].values) ? tables[0].values.map(r => r[0]) : [];
+    let found = false;
+    for (const t of tableNames) {
+      const colsInfo = db.exec("PRAGMA table_info(" + JSON.stringify(t) + ")");
+      const cols = (colsInfo[0] && colsInfo[0].values) ? colsInfo[0].values.map(r => r[1]) : [];
+      if (!cols.includes(field)) continue;
+      const attrCols = cols.filter(c => !/geom|geometry|shape/i.test(c)).slice(0, 10);
+      const q = "SELECT " + attrCols.map(c => '"' + c + '"').join(",") +
+        " FROM \"" + t + "\" WHERE \"" + field + "\" = " + JSON.stringify(isNaN(Number(value)) ? value : Number(value)) +
+        " OR \"" + field + "\" = " + JSON.stringify(value) + " LIMIT 1";
+      try {
+        const rows = db.exec(q);
+        if (rows[0] && rows[0].values && rows[0].values.length) {
+          const row = rows[0].values[0];
+          const obj = {};
+          attrCols.forEach((c, i) => { obj[c] = row[i]; });
+          // נסה לחלץ סוג גיאומטריה מעמודת geometry
+          let geomLabel = "";
+          const geomCol = cols.find(c => /geom|geometry|shape/i.test(c));
+          if (geomCol) {
+            try {
+              const gq = "SELECT \"" + geomCol + "\" FROM \"" + t + "\" WHERE \"" + field + "\" = " +
+                JSON.stringify(isNaN(Number(value)) ? value : Number(value)) +
+                " OR \"" + field + "\" = " + JSON.stringify(value) + " LIMIT 1";
+              const gr = db.exec(gq);
+              if (gr[0] && gr[0].values && gr[0].values[0]) {
+                const blob = gr[0].values[0][0];
+                const gt = wkbTypeName(blob);
+                if (gt) geomLabel = "\ngeometry: " + gt;
+              }
+            } catch (_) {}
+          }
+          document.getElementById("qGpkg").textContent = "✓ נמצא ב-" + t + "\n" + formatRow(obj) + geomLabel;
+          found = true;
+          break;
+        }
+      } catch (_) {}
+    }
+    if (!found) document.getElementById("qGpkg").textContent = "לא נמצא (" + field + "=" + value + ")";
+    db.close();
+  } catch (e) {
+    document.getElementById("qGpkg").textContent = "שגיאה: " + e.message;
+  }
+
+  // GeoParquet
+  try {
+    const { parquetReadObjects } = await import("https://cdn.jsdelivr.net/npm/hyparquet@1.8.2/+esm");
+    const file = {
+      byteLength: bufs.parquet.byteLength,
+      slice: (start, end) => bufs.parquet.slice(start, end)
+    };
+    // קוראים מנות קטנות עד שמוצאים
+    const numVal = Number(value);
+    let hit = null;
+    const batch = 500;
+    for (let start = 0; start < 10000; start += batch) {
+      const rows = await parquetReadObjects({ file, rowStart: start, rowEnd: start + batch });
+      if (!rows || !rows.length) break;
+      hit = rows.find(r => {
+        const v = r[field];
+        return v == value || v == numVal || String(v) === value;
+      });
+      if (hit) break;
+      if (rows.length < batch) break;
+    }
+    if (hit) {
+      let geomLabel = "";
+      const gk = Object.keys(hit).find(k => /geom|geometry|wkb/i.test(k));
+      if (gk && hit[gk] != null) {
+        const gt = wkbTypeName(hit[gk]);
+        if (gt) geomLabel = "\ngeometry: " + gt;
+        else geomLabel = "\ngeometry: (בינארי)";
+      }
+      document.getElementById("qParq").textContent = "✓ נמצא\n" + formatRow(hit) + geomLabel;
+    } else {
+      document.getElementById("qParq").textContent = "לא נמצא (" + field + "=" + value + ")";
+    }
+  } catch (e) {
+    document.getElementById("qParq").textContent = "שגיאה: " + e.message;
+  }
+
+  st.innerHTML = "אותם שדות וערכים למעט תצוגת גיאומטריה – אלה <strong>אותם נתונים</strong> בפורמטים שונים.";
+}
+
+document.getElementById("btnCheck").onclick = checkSizes;
+document.getElementById("btnQuery").onclick = runSharedQuery;
+
+
+document.getElementById("btnStart").onclick = () => {
+  document.getElementById("intro").style.display = "none";
+  document.getElementById("app").classList.add("visible");
+  if (!mapReady) initMap();
+  setTimeout(() => { if (map) map.resize(); }, 50);
+};
+
+function initMap() {
+  map = new maplibregl.Map({
+    container: "map",
+    style: {
+      version: 8,
+      sources: {
+        base: {
+          type: "raster",
+          tiles: ["https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"],
+          tileSize: 256,
+          attribution: "© OSM © CARTO"
+        }
+      },
+      layers: [{ id: "base", type: "raster", source: "base" }]
+    },
+    center: CENTER,
+    zoom: 13,
+    antialias: true
+  });
+  map.addControl(new maplibregl.NavigationControl(), "top-left");
+  map.on("load", () => {
+    mapReady = true;
+    log("מפה מוכנה – מציגה רק GeoJSON", "ok");
+    requestAnimationFrame(loop);
+  });
+}
+
+function loop(ts) {
+  frameCount++;
+  currentFrameTime = ts - lastFrameTs;
+  lastFrameTs = ts;
+  if (ts - lastFpsUpdate >= 1000) {
+    currentFps = Math.round(frameCount * 1000 / (ts - lastFpsUpdate));
+    frameCount = 0;
+    lastFpsUpdate = ts;
+    updateUI();
+  }
+  requestAnimationFrame(loop);
+}
+
+function updateUI() {
+  const f = document.getElementById("mFps");
+  f.textContent = currentFps;
+  f.className = "m-val " + (currentFps >= 50 ? "good" : currentFps >= 30 ? "warn" : "bad");
+  document.getElementById("mFrame").textContent = currentFrameTime.toFixed(0) + "ms";
+  if (performance.memory) {
+    document.getElementById("mMem").textContent =
+      (performance.memory.usedJSHeapSize / 1048576).toFixed(0) + "MB";
+  }
+}
+
+function removeLayers() {
+  ["b-fill", "b-line"].forEach(id => { if (map.getLayer(id)) map.removeLayer(id); });
+  if (map.getSource("buildings")) map.removeSource("buildings");
+  document.getElementById("mCount").textContent = "0";
+  document.getElementById("mMode").textContent = "ריק";
+}
+
+async function loadGeoJSON() {
+  const btn = document.getElementById("btnLoad");
+  btn.disabled = true;
+  setStatus("מוריד GeoJSON...");
+  log("מוריד GeoJSON מה-GitHub...");
+
+  try {
+    removeLayers();
+    const t0 = performance.now();
+    const res = await fetch(FILES.geojson);
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const data = await res.json();
+    const downloadMs = performance.now() - t0;
+    const n = (data.features || []).length;
+    log("הורדה: " + n.toLocaleString("he-IL") + " ישויות · " + Math.round(downloadMs) + "ms", "ok");
+
+    const t1 = performance.now();
+    map.addSource("buildings", { type: "geojson", data: data });
+    map.addLayer({
+      id: "b-fill",
+      type: "fill",
+      source: "buildings",
+      paint: { "fill-color": "#e11d48", "fill-opacity": 0.35 }
+    });
+    map.addLayer({
+      id: "b-line",
+      type: "line",
+      source: "buildings",
+      paint: { "line-color": "#9f1239", "line-width": 0.6, "line-opacity": 0.45 }
+    });
+
+    const idleMs = await Promise.race([
+      new Promise(r => map.once("idle", () => r(performance.now() - t1))),
+      new Promise(r => setTimeout(() => r(performance.now() - t1), 15000))
+    ]);
+
+    document.getElementById("mIdle").textContent = Math.round(idleMs) + "ms";
+    document.getElementById("mCount").textContent = n.toLocaleString("he-IL");
+    document.getElementById("mMode").textContent = "GeoJSON";
+    setStatus("נטען · Idle " + Math.round(idleMs) + "ms");
+    log("מוצג על המפה · Idle " + Math.round(idleMs) + "ms", "ok");
+    log("זוכר: GPKG ו-Parquet לא מוצגים כאן – רק נשמרים בשרת", "warn");
+
+    map.easeTo({ center: CENTER, zoom: 13, duration: 500 });
+    document.getElementById("btnClear").disabled = false;
+  } catch (e) {
+    log("שגיאה: " + e.message, "bad");
+    setStatus("שגיאה בטעינה");
+  }
+  btn.disabled = false;
+}
+
+document.getElementById("btnLoad").onclick = loadGeoJSON;
+document.getElementById("btnClear").onclick = () => {
+  removeLayers();
+  setStatus("נוקה");
+  log("שכבה הוסרה");
+  document.getElementById("btnClear").disabled = true;
+};
+</script>
+</body>
+</html>
